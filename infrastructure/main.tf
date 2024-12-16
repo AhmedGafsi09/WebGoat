@@ -8,6 +8,12 @@ variable "subscription_id" {
   type        = string
 }
 
+# Variables
+variable "ssh_public_key" {
+  description = "Public SSH key for VM access"
+  type        = string
+}
+
 # Resource Group
 resource "azurerm_resource_group" "webgoat_rg" {
   name     = "webgoat-rg"
