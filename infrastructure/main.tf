@@ -2,6 +2,12 @@ provider "azurerm" {
   features {}
 }
 
+# Variables
+variable "ssh_public_key" {
+  description = "Public SSH key for VM access"
+  type        = string
+}
+
 # Resource Group
 resource "azurerm_resource_group" "webgoat_rg" {
   name     = "webgoat-rg"
@@ -63,36 +69,6 @@ resource "azurerm_public_ip" "webgoat_pip" {
   allocation_method   = "Static"
 }
 
-# VM
-resource "azurerm_linux_virtual_machine" "webgoat_vm" {
-  name                = "webgoat-vm"
-  location            = azurerm_resource_group.webgoat_rg.location
-  resource_group_name = azurerm_resource_group.webgoat_rg.name
-  size                = "Standard_B2s"
-  admin_username      = "azureuser"
-
-  network_interface_ids = [
-    azurerm_network_interface.webgoat_nic.id
-  ]
-
-  admin_ssh_key {
-    username   = "azureuser"
-    public_key = file("~/.ssh/id_rsa.pub")
-  }
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
-}
-
 # Network Interface
 resource "azurerm_network_interface" "webgoat_nic" {
   name                = "webgoat-nic"
@@ -107,6 +83,47 @@ resource "azurerm_network_interface" "webgoat_nic" {
   }
 }
 
+# VM
+resource "azurerm_linux_virtual_machine" "webgoat_vm" {
+  name                = "webgoat-vm"
+  location            = azurerm_resource_group.webgoat_rg.location
+  resource_group_name = azurerm_resource_group.webgoat_rg.name
+  size                = "Standard_B2s"
+  admin_username      = "azureuser"
+
+  network_interface_ids = [
+    azurerm_network_interface.webgoat_nic.id
+  ]
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = var.ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+
+  custom_data = base64encode(<<-EOF
+              #!/bin/bash
+              apt-get update
+              apt-get install -y docker.io docker-compose git
+              systemctl enable docker
+              systemctl start docker
+              usermod -aG docker azureuser
+              EOF
+  )
+}
+
+# Outputs
 output "public_ip" {
   value = azurerm_public_ip.webgoat_pip.ip_address
 }
