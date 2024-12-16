@@ -1,3 +1,7 @@
+# Ajouter les lignes USER webgoat et EXPOSE 8080
+USER webgoat
+EXPOSE 8080
+
 # We need JDK as some of the lessons needs to be able to compile Java code
 FROM docker.io/eclipse-temurin:21-jdk-jammy
 
