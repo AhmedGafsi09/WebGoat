@@ -27,13 +27,37 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL'
 
-      - name: Check Infrastructure Costs
-        uses: infracost/infracost-action@v1
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
         env:
-          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+          JAVA_HOME: ${{env.JAVA_HOME}}
+        with:
+          project: 'WebGoat'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
 
       - name: Lint Kubernetes files
         run: |
           curl -Lo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
           tar xf kubeconform.tar.gz
           ./kubeconform -strict kubernetes/
+
+      - name: Run OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.9.0
+        with:
+          target: 'http://20.63.16.243:8080/WebGoat'
+          
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            reports/
+            ./*zap*
