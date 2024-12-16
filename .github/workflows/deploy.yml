@@ -1,0 +1,47 @@
+name: Deploy WebGoat
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+        
+    - name: Build Docker image
+      run: |
+        docker build -t webgoat:latest .
+        
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'webgoat:latest'
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+
+    - name: Deploy to VM
+      uses: appleboy/ssh-action@master
+      with:
+        host: 20.63.16.243
+        username: azureuser
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd WebGoat
+          git pull
+          docker build -t webgoat:latest .
+          docker-compose up -d
