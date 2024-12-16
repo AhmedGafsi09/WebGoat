@@ -6,14 +6,50 @@
     - name: Update apt cache
       apt:
         update_cache: yes
+        cache_valid_time: 3600
 
-    - name: Install required packages
+    - name: Remove conflicting packages
       apt:
         name:
+          - containerd
+          - docker
           - docker.io
-          - docker-compose
-          - git
+        state: absent
+        purge: yes
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
           - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
         state: present
 
     - name: Add user to docker group
@@ -22,43 +58,14 @@
         groups: docker
         append: yes
 
-    - name: Install kubectl
-      become: yes
-      shell: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        mv kubectl /usr/local/bin/
-
-    - name: Create Kubernetes config directory
-      file:
-        path: /home/azureuser/.kube
-        state: directory
-        owner: azureuser
-        group: azureuser
-        mode: '0755'
-
     - name: Clone WebGoat repository
       git:
         repo: https://github.com/AhmedGafsi09/WebGoat.git
         dest: /home/azureuser/WebGoat
         force: yes
 
-    # Déploiement Kubernetes
-    - name: Create monitoring namespace
-      kubernetes.core.k8s:
-        name: monitoring
-        api_version: v1
-        kind: Namespace
-        state: present
-
-    - name: Apply Prometheus configurations
-      kubernetes.core.k8s:
-        state: present
-        src: "/home/azureuser/WebGoat/kubernetes/prometheus/prometheus-deployment.yaml"
-        namespace: monitoring
-
-    - name: Apply Grafana configurations
-      kubernetes.core.k8s:
-        state: present
-        src: "/home/azureuser/WebGoat/kubernetes/grafana/grafana-deployment.yaml"
-        namespace: monitoring
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
