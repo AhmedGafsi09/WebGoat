@@ -1,0 +1,30 @@
+---
+- name: Deploy with Terraform
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Terraform
+      apt:
+        name: unzip
+        state: present
+
+    - name: Download Terraform
+      get_url:
+        url: https://releases.hashicorp.com/terraform/1.5.0/terraform_1.5.0_linux_amd64.zip
+        dest: /tmp/terraform.zip
+
+    - name: Extract Terraform
+      unarchive:
+        src: /tmp/terraform.zip
+        dest: /usr/local/bin
+        remote_src: yes
+
+    - name: Run Terraform init
+      command: terraform init
+      args:
+        chdir: /home/azureuser/WebGoat/infrastructure
+
+    - name: Run Terraform apply
+      command: terraform apply -auto-approve
+      args:
+        chdir: /home/azureuser/WebGoat/infrastructure

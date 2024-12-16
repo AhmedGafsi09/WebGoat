@@ -1,0 +1,23 @@
+name: Discord Notifications
+
+on:
+  workflow_run:
+    workflows: ["Deploy WebGoat", "Security and Quality Checks"]
+    types:
+      - completed
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: |
+            🔔 Pipeline Status Update
+            Workflow: ${{ github.event.workflow_run.name }}
+            Status: ${{ github.event.workflow_run.conclusion }}
+            Branch: ${{ github.event.workflow_run.head_branch }}
+            Commit: ${{ github.event.workflow_run.head_commit.message }}
