@@ -24,19 +24,26 @@ jobs:
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
           sudo kubeadm reset -f || true
-          sudo apt-get remove -y kubelet kubeadm kubectl kubernetes-cni
+          sudo apt-get remove -y kubelet kubeadm kubectl
           sudo apt-get autoremove -y
           sudo rm -rf /etc/kubernetes/
           sudo rm -rf ~/.kube/
+          sudo rm -f /etc/apt/sources.list.d/kubernetes.list
+          sudo rm -f /etc/apt/trusted.gpg.d/google.gpg
         '
 
     - name: Install Dependencies on VM
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          # Update system
           sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl
-          curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
-          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+          sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+          # Add Kubernetes apt repository
+          curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+          # Update apt and install K8s packages
           sudo apt-get update
           sudo apt-get install -y kubelet kubeadm kubectl
           sudo apt-mark hold kubelet kubeadm kubectl
@@ -45,10 +52,19 @@ jobs:
     - name: Initialize Kubernetes Cluster
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          # Pre-pull required images
+          sudo kubeadm config images pull
+
+          # Initialize the cluster
           sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243
+
+          # Configure kubectl for the user
           mkdir -p $HOME/.kube
           sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
           sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+          # Remove the taint from the control-plane node
+          kubectl taint nodes --all node-role.kubernetes.io/control-plane-
         '
 
     - name: Install Calico Network Plugin
