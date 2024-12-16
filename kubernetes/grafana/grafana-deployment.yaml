@@ -16,6 +16,13 @@ spec:
       containers:
       - name: grafana
         image: grafana/grafana
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
         ports:
         - containerPort: 3000
         env:
@@ -30,7 +37,7 @@ metadata:
   name: grafana
   namespace: monitoring
 spec:
-  type: LoadBalancer
+  type: NodePort  # Changed from LoadBalancer to NodePort
   ports:
   - port: 3000
     targetPort: 3000
