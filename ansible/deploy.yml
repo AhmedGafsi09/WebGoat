@@ -1,4 +1,3 @@
----
 - name: Configure WebGoat Environment
   hosts: webgoat
   become: yes
@@ -24,7 +23,6 @@
         name:
           - docker.io
           - python3-pip
-          - git
         state: present
         update_cache: yes
 
@@ -38,12 +36,6 @@
         name: azureuser
         groups: docker
         append: yes
-
-    - name: Clone or update WebGoat repository
-      git:
-        repo: https://github.com/AhmedGafsi09/WebGoat.git
-        dest: /home/azureuser/WebGoat
-        force: yes
 
     - name: Ensure Docker is running
       service:
