@@ -1,14 +1,15 @@
-name: "Deploy WebGoat"
+name: Deploy to Kubernetes
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_run:
+    workflows: ["Build and Push Docker Image for WebGoat"]
+    types:
+      - completed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
     - uses: actions/checkout@v3
 
@@ -70,7 +71,7 @@ jobs:
           exit 1
         '
 
-    - name: Deploy WebGoat
+    - name: Deploy Applications
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
           cd ~/WebGoat
@@ -79,4 +80,5 @@ jobs:
           kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f kubernetes/prometheus/ -n monitoring
           kubectl apply -f kubernetes/grafana/ -n monitoring
+          kubectl apply -f kubernetes/webgoat/ -n webgoat
         '
