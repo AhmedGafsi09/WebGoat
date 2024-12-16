@@ -13,9 +13,9 @@ data:
         metrics_path: '/WebGoat/actuator/prometheus'  
         static_configs:
           - targets:
-              - '20.63.16.243:8080'  # External IP for WebGoat
-          headers:
-            Cookie: "JSESSIONID=S3mmMp1cQfd2ALOAbvRc3KtivHMTVzb7EY00yWEX"  # Add the session cookie here
+              - '20.63.16.243:8080'
+              - 'http://20.63.16.243:8080/WebGoat/login'
+              - 'webgoat.webgoat.svc.cluster.local:8080'
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:9090']
