@@ -14,7 +14,8 @@ data:
         static_configs:
           - targets:
               - '20.63.16.243:8080'  # External IP for WebGoat
-              - 'webgoat.webgoat.svc.cluster.local:8080'  # Internal Kubernetes service for WebGoat
+          headers:
+            Cookie: "JSESSIONID=S3mmMp1cQfd2ALOAbvRc3KtivHMTVzb7EY00yWEX"  # Add the session cookie here
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:9090']
