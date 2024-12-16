@@ -1,19 +1,19 @@
 ---
-- name: Deploy WebGoat
+- name: Configure WebGoat Environment
   hosts: webgoat
   become: yes
   tasks:
-    - name: Install required packages
+    - name: Update apt cache
       apt:
-        name: 
-          - docker.io
-          - python3-pip
-        state: present
         update_cache: yes
 
-    - name: Install Docker Python module
-      pip:
-        name: docker
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - git
+          - python3-pip
         state: present
 
     - name: Add user to docker group
@@ -22,33 +22,43 @@
         groups: docker
         append: yes
 
-    - name: Create WebGoat directory
+    - name: Install kubectl
+      become: yes
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        mv kubectl /usr/local/bin/
+
+    - name: Create Kubernetes config directory
       file:
-        path: /opt/webgoat
+        path: /home/azureuser/.kube
         state: directory
+        owner: azureuser
+        group: azureuser
         mode: '0755'
 
     - name: Clone WebGoat repository
       git:
         repo: https://github.com/AhmedGafsi09/WebGoat.git
-        dest: /opt/webgoat
+        dest: /home/azureuser/WebGoat
         force: yes
 
-    - name: Copy docker-compose file
-      copy:
-        src: files/docker-compose.yml
-        dest: /opt/webgoat/docker-compose.yml
-        mode: '0644'
-
-    - name: Build and start containers
-      docker_compose:
-        project_src: /opt/webgoat
-        build: yes
-        pull: yes
+    # Déploiement Kubernetes
+    - name: Create monitoring namespace
+      kubernetes.core.k8s:
+        name: monitoring
+        api_version: v1
+        kind: Namespace
         state: present
-        recreate: always
 
-    - name: Ensure containers are running
-      docker_compose:
-        project_src: /opt/webgoat
+    - name: Apply Prometheus configurations
+      kubernetes.core.k8s:
         state: present
+        src: "/home/azureuser/WebGoat/kubernetes/prometheus/prometheus-deployment.yaml"
+        namespace: monitoring
+
+    - name: Apply Grafana configurations
+      kubernetes.core.k8s:
+        state: present
+        src: "/home/azureuser/WebGoat/kubernetes/grafana/grafana-deployment.yaml"
+        namespace: monitoring
