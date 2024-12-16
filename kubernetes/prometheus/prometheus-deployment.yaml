@@ -13,6 +13,10 @@ spec:
       labels:
         app: prometheus
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: prometheus
         image: prom/prometheus
@@ -39,7 +43,7 @@ metadata:
   name: prometheus
   namespace: monitoring
 spec:
-  type: NodePort  # Changed from LoadBalancer to NodePort
+  type: NodePort
   ports:
   - port: 9090
     targetPort: 9090

@@ -13,6 +13,10 @@ spec:
       labels:
         app: grafana
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: grafana
         image: grafana/grafana
@@ -37,7 +41,7 @@ metadata:
   name: grafana
   namespace: monitoring
 spec:
-  type: NodePort  # Changed from LoadBalancer to NodePort
+  type: NodePort
   ports:
   - port: 3000
     targetPort: 3000
