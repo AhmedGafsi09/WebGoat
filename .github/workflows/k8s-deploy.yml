@@ -1,31 +1,40 @@
-name: Deploy WebGoat to Kubernetes
+name: Deploy to K8s
 
 on:
   push:
-    branches:
-      - main  # Trigger on pushes to the main branch
-  pull_request:
-    branches:
-      - main  # Trigger on pull requests targeting the main branch
+    branches: [ main ]
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Specify the environment for the job
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Set up Kubernetes tools
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
+    - name: Copy Kubernetes files and deploy
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: "20.63.16.243"
+        username: "azureuser"
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Create directory if it doesn't exist
+          mkdir -p ~/WebGoat/kubernetes
 
-      - name: Deploy WebGoat
-        run: |
-          kubectl apply -f kubernetes --validate=false
-          kubectl rollout status deployment/webgoat --namespace webgoat
+          # Clone or update repository
+          if [ ! -d ~/WebGoat ]; then
+            git clone https://github.com/AhmedGafsi09/WebGoat.git ~/WebGoat
+          else
+            cd ~/WebGoat
+            git pull
+          fi
 
-      - name: Get WebGoat service information
-        run: |
-          kubectl get service webgoat --namespace webgoat -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+          # Create namespace if it doesn't exist
+          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+
+          # Deploy to Kubernetes
+          cd ~/WebGoat
+          kubectl apply -f kubernetes/ -n webgoat
+
+          # Verify deployment
+          kubectl get pods -n webgoat
+          kubectl get services -n webgoat
