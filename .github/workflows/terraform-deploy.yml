@@ -9,24 +9,19 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    
-    env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      
     - name: Generate SSH Key
       run: |
+        # Generate SSH key pair
         ssh-keygen -t rsa -b 4096 -f ./id_rsa -N ""
         echo "SSH_PUBLIC_KEY=$(cat ./id_rsa.pub)" >> $GITHUB_ENV
         echo "SSH_PRIVATE_KEY=$(cat ./id_rsa)" >> $GITHUB_ENV
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
 
     - name: Terraform Init
       run: |
@@ -57,7 +52,7 @@ jobs:
         chmod 600 ./id_rsa
         ssh-keyscan -H ${{ env.VM_IP }} >> ~/.ssh/known_hosts
         
-        # Install Docker and clone repository
+        # SSH into VM and set up environment
         ssh -i ./id_rsa azureuser@${{ env.VM_IP }} "
           sudo apt update
           sudo apt install -y docker.io docker-compose git
@@ -67,3 +62,8 @@ jobs:
           cd WebGoat
           sudo docker-compose up -d
         "
+
+    - name: Clean Up SSH Key
+      if: always()
+      run: |
+        rm -f ./id_rsa ./id_rsa.pub
