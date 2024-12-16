@@ -2,44 +2,15 @@ version: '3.8'
 
 services:
   webgoat:
-    build: .
-    image: webgoat:latest
+    image: webgoat/webgoat
     ports:
       - "8080:8080"
     environment:
       - WEBGOAT_HOST=0.0.0.0
     restart: unless-stopped
-    volumes:
-      - webgoat_data:/home/webgoat/.webgoat
     networks:
-      - webgoat-net
-
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
-    networks:
-      - webgoat-net
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    networks:
-      - webgoat-net
+      - webgoat_net
 
 networks:
-  webgoat-net:
+  webgoat_net:
     driver: bridge
-
-volumes:
-  webgoat_data:
-  prometheus_data:
-  grafana_data:
