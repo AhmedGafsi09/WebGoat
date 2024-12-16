@@ -38,6 +38,8 @@ jobs:
 
       - name: Verify WebGoat Directory Exists
         run: |
+          ls -al
+          pwd
           if [ ! -d "WebGoat" ]; then
             echo "Error: Directory 'WebGoat' does not exist. Check your repository structure."
             exit 1
