@@ -1,29 +1,89 @@
-name: Deploy to Kubernetes
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
+---
+    name: Deploy WebGoat to Kubernetes
+    hosts: webgoat
+    become: yes
+    tasks:
+      - name: Create kubernetes directory
+        file:
+          path: /opt/webgoat/kubernetes
+          state: directory
+          mode: '0755'
     
-    - name: Deploy to Kubernetes
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: "20.63.16.243"
-        username: "azureuser"
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # Create namespace if it doesn't exist
-          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
-          
-          # Deploy the application
-          cd ~/WebGoat/kubernetes
-          kubectl apply -f deployment.yaml
-          
-          # Verify deployment
-          kubectl get pods -n webgoat
-          kubectl get services -n webgoat
+      - name: Create WebGoat namespace
+        kubernetes.core.k8s:
+          name: webgoat
+          api_version: v1
+          kind: Namespace
+          state: present
+    
+      - name: Deploy WebGoat application
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: webgoat
+              namespace: webgoat
+            spec:
+              replicas: 2
+              selector:
+                matchLabels:
+                  app: webgoat
+              template:
+                metadata:
+                  labels:
+                    app: webgoat
+                spec:
+                  containers:
+                  - name: webgoat
+                    image: webgoat/webgoat
+                    ports:
+                    - containerPort: 8080
+                    resources:
+                      limits:
+                        cpu: "1"
+                        memory: "1Gi"
+                      requests:
+                        cpu: "500m"
+                        memory: "512Mi"
+    
+      - name: Create WebGoat Service
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: webgoat
+              namespace: webgoat
+            spec:
+              type: LoadBalancer
+              ports:
+              - port: 8080
+                targetPort: 8080
+              selector:
+                app: webgoat
+    
+      - name: Wait for deployment to be ready
+        kubernetes.core.k8s_info:
+          kind: Deployment
+          name: webgoat
+          namespace: webgoat
+          wait: yes
+          wait_timeout: 300
+          wait_condition:
+            type: Available
+            status: "True"
+    
+      - name: Get service information
+        kubernetes.core.k8s_info:
+          kind: Service
+          name: webgoat
+          namespace: webgoat
+        register: service_info
+    
+      - name: Display Service IP
+        debug:
+          msg: "WebGoat is available at: http://{{ service_info.resources[0].status.loadBalancer.ingress[0].ip }}:8080/WebGoat"
+    
