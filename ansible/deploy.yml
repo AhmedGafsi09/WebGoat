@@ -1,0 +1,54 @@
+---
+- name: Deploy WebGoat
+  hosts: webgoat
+  become: yes
+  tasks:
+    - name: Install required packages
+      apt:
+        name: 
+          - docker.io
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Python module
+      pip:
+        name: docker
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: azureuser
+        groups: docker
+        append: yes
+
+    - name: Create WebGoat directory
+      file:
+        path: /opt/webgoat
+        state: directory
+        mode: '0755'
+
+    - name: Clone WebGoat repository
+      git:
+        repo: https://github.com/AhmedGafsi09/WebGoat.git
+        dest: /opt/webgoat
+        force: yes
+
+    - name: Copy docker-compose file
+      copy:
+        src: files/docker-compose.yml
+        dest: /opt/webgoat/docker-compose.yml
+        mode: '0644'
+
+    - name: Build and start containers
+      docker_compose:
+        project_src: /opt/webgoat
+        build: yes
+        pull: yes
+        state: present
+        recreate: always
+
+    - name: Ensure containers are running
+      docker_compose:
+        project_src: /opt/webgoat
+        state: present
