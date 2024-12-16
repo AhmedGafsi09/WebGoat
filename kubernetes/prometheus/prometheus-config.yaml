@@ -14,7 +14,6 @@ data:
         static_configs:
           - targets:
               - '20.63.16.243:8080'
-              - 'http://20.63.16.243:8080/WebGoat/login'
               - 'webgoat.webgoat.svc.cluster.local:8080'
       - job_name: 'prometheus'
         static_configs:
