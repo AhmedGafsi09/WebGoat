@@ -1,4 +1,4 @@
-name: "Deploy to VM"
+name: "Deploy WebGoat"
 
 on:
   push:
@@ -12,32 +12,22 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Deploy to VM
-      uses: appleboy/ssh-action@v1.0.0
+    - name: Set up Python
+      uses: actions/setup-python@v2
       with:
-        host: 20.63.16.243
-        username: azureuser
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # Update system and install dependencies
-          sudo apt update
-          sudo apt install -y docker.io docker-compose git
+        python-version: '3.x'
 
-          # Add user to docker group
-          sudo usermod -aG docker $USER
+    - name: Install Ansible
+      run: |
+        python -m pip install --upgrade pip
+        pip install ansible
 
-          # Clone or update repository
-          if [ ! -d ~/WebGoat ]; then
-            git clone https://github.com/AhmedGafsi09/WebGoat.git ~/WebGoat
-          else
-            cd ~/WebGoat
-            git pull
-          fi
-
-          # Deploy with Docker Compose
-          cd ~/WebGoat
-          sudo docker-compose down || true
-          sudo docker-compose up -d
-
-          # Verify deployment
-          sudo docker ps
+    - name: Run Ansible playbook
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: "false"
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        cp ansible/inventory.ini .
+        ansible-playbook -i inventory.ini ansible/deploy.yml -vv
