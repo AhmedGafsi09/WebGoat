@@ -13,4 +13,4 @@ services:
 
 networks:
   webgoat_net:
-    driver: bridge
+    driver: bridge 
