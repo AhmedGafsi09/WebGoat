@@ -1,0 +1,29 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Kubernetes
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: "20.63.16.243"
+        username: "azureuser"
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Create namespace if it doesn't exist
+          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Deploy the application
+          cd ~/WebGoat/kubernetes
+          kubectl apply -f deployment.yaml
+          
+          # Verify deployment
+          kubectl get pods -n webgoat
+          kubectl get services -n webgoat
