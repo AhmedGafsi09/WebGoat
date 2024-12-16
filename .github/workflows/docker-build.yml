@@ -36,6 +36,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Verify WebGoat Directory Exists
+        run: |
+          if [ ! -d "WebGoat" ]; then
+            echo "Error: Directory 'WebGoat' does not exist. Check your repository structure."
+            exit 1
+          fi
+
       - name: Build with Maven
         run: |
           cd WebGoat
