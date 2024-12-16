@@ -1,33 +1,79 @@
-name: "Deploy WebGoat"
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-
-    - name: Install Ansible
-      run: |
-        python -m pip install --upgrade pip
-        pip install ansible
-
-    - name: Run Ansible playbook
-      env:
-        ANSIBLE_HOST_KEY_CHECKING: "false"
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        cp ansible/inventory.ini .
-        ansible-playbook -i inventory.ini ansible/deploy.yml -vv
+---
+  - name: Configure WebGoat Environment
+    hosts: webgoat
+    become: yes
+    tasks:
+      - name: Remove old Docker installations
+        apt:
+          name:
+            - docker
+            - docker.io
+            - docker-compose
+            - docker-engine
+            - containerd
+            - runc
+          state: absent
+          purge: yes
+          autoremove: yes
+  
+      - name: Clean Docker files
+        file:
+          path: "{{ item }}"
+          state: absent
+        with_items:
+          - /var/lib/docker
+          - /etc/docker
+          - /etc/apt/sources.list.d/docker.list
+          - /usr/share/keyrings/docker-archive-keyring.gpg
+          - /usr/share/keyrings/docker.gpg
+  
+      - name: Clean apt lists
+        command: rm -rf /var/lib/apt/lists/*
+  
+      - name: Reset containerd configuration
+        command: dpkg -P containerd
+  
+      - name: Update apt cache
+        apt:
+          update_cache: yes
+          cache_valid_time: 3600
+  
+      - name: Install dependencies
+        apt:
+          name:
+            - ca-certificates
+            - curl
+            - gnupg
+            - lsb-release
+            - python3-pip
+          state: present
+  
+      - name: Download and install Docker
+        shell: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sh get-docker.sh
+        args:
+          creates: /usr/bin/docker
+  
+      - name: Install Docker Compose with pip
+        pip:
+          name: docker-compose
+          state: present
+  
+      - name: Add user to docker group
+        user:
+          name: azureuser
+          groups: docker
+          append: yes
+  
+      - name: Ensure Docker service is running
+        service:
+          name: docker
+          state: started
+          enabled: yes
+  
+      - name: Clone WebGoat repository
+        git:
+          repo: https://github.com/AhmedGafsi09/WebGoat.git
+          dest: /home/azureuser/WebGoat
+          force: yes
