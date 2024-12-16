@@ -1,10 +1,10 @@
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id
 }
 
-# Variables
-variable "ssh_public_key" {
-  description = "Public SSH key for VM access"
+variable "subscription_id" {
+  description = "Azure Subscription ID"
   type        = string
 }
 

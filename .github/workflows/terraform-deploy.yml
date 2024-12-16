@@ -9,6 +9,8 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
     - uses: actions/checkout@v3
@@ -37,13 +39,17 @@ jobs:
     - name: Terraform Plan
       run: |
         cd infrastructure
-        terraform plan -var="ssh_public_key=${{ env.SSH_PUBLIC_KEY }}"
+        terraform plan \
+          -var="ssh_public_key=${{ env.SSH_PUBLIC_KEY }}" \
+          -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
     - name: Terraform Apply
       if: github.ref == 'refs/heads/main'
       run: |
         cd infrastructure
-        terraform apply -auto-approve -var="ssh_public_key=${{ env.SSH_PUBLIC_KEY }}"
+        terraform apply -auto-approve \
+          -var="ssh_public_key=${{ env.SSH_PUBLIC_KEY }}" \
+          -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
     - name: Get VM IP
       if: github.ref == 'refs/heads/main'
@@ -53,21 +59,24 @@ jobs:
 
     - name: Configure VM
       if: github.ref == 'refs/heads/main'
-      run: |
-        echo "${{ env.SSH_PRIVATE_KEY }}" > ./id_rsa
-        chmod 600 ./id_rsa
-        ssh-keyscan -H ${{ env.VM_IP }} >> ~/.ssh/known_hosts
-        
-        # SSH into VM and set up environment
-        ssh -i ./id_rsa azureuser@${{ env.VM_IP }} "
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ env.VM_IP }}
+        username: azureuser
+        key: ${{ env.SSH_PRIVATE_KEY }}
+        script: |
           sudo apt update
           sudo apt install -y docker.io docker-compose git
-          sudo usermod -aG docker \$USER
+          sudo usermod -aG docker $USER
           cd ~
-          git clone https://github.com/AhmedGafsi09/WebGoat.git
-          cd WebGoat
+          if [ ! -d "WebGoat" ]; then
+            git clone https://github.com/AhmedGafsi09/WebGoat.git
+          else
+            cd WebGoat
+            git pull
+          fi
+          cd ~/WebGoat
           sudo docker-compose up -d
-        "
 
     - name: Clean Up SSH Key
       if: always()
