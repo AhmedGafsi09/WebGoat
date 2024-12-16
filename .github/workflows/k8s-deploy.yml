@@ -24,7 +24,7 @@ jobs:
       - name: Deploy WebGoat
         run: |
           ls -al
-          kubectl apply -f ./WebGoat/kubernetes
+          kubectl apply -f /WebGoat/kubernetes
           kubectl rollout status deployment/webgoat --namespace webgoat
 
       - name: Get WebGoat service information
