@@ -1,7 +1,9 @@
-name: Deploy to K8s
+name: "Deploy WebGoat"
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 jobs:
@@ -10,31 +12,71 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Copy Kubernetes files and deploy
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: "20.63.16.243"
-        username: "azureuser"
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          # Create directory if it doesn't exist
-          mkdir -p ~/WebGoat/kubernetes
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
 
-          # Clone or update repository
-          if [ ! -d ~/WebGoat ]; then
-            git clone https://github.com/AhmedGafsi09/WebGoat.git ~/WebGoat
-          else
-            cd ~/WebGoat
-            git pull
-          fi
+    - name: Reset and Clean Kubernetes
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          sudo kubeadm reset -f || true
+          sudo apt-get remove -y kubelet kubeadm kubectl kubernetes-cni
+          sudo apt-get autoremove -y
+          sudo rm -rf /etc/kubernetes/
+          sudo rm -rf ~/.kube/
+        '
 
-          # Create namespace if it doesn't exist
-          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+    - name: Install Dependencies on VM
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl
+          curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+          sudo apt-get update
+          sudo apt-get install -y kubelet kubeadm kubectl
+          sudo apt-mark hold kubelet kubeadm kubectl
+        '
 
-          # Deploy to Kubernetes
+    - name: Initialize Kubernetes Cluster
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243
+          mkdir -p $HOME/.kube
+          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+          sudo chown $(id -u):$(id -g) $HOME/.kube/config
+        '
+
+    - name: Install Calico Network Plugin
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+        '
+
+    - name: Wait for Node Ready
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+          for i in {1..30}; do
+            if kubectl get nodes | grep -q "Ready"; then
+              echo "Node is Ready"
+              exit 0
+            fi
+            echo "Waiting for node to be ready... ($i/30)"
+            sleep 10
+          done
+          exit 1
+        '
+
+    - name: Deploy WebGoat
+      run: |
+        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
           cd ~/WebGoat
-          kubectl apply -f kubernetes/ -n webgoat
-
-          # Verify deployment
-          kubectl get pods -n webgoat
-          kubectl get services -n webgoat
+          git pull
+          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f kubernetes/prometheus/ -n monitoring
+          kubectl apply -f kubernetes/grafana/ -n monitoring
+        '
