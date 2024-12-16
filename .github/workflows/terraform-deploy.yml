@@ -17,8 +17,14 @@ jobs:
       run: |
         # Generate SSH key pair
         ssh-keygen -t rsa -b 4096 -f ./id_rsa -N ""
+        
+        # Export the public key
         echo "SSH_PUBLIC_KEY=$(cat ./id_rsa.pub)" >> $GITHUB_ENV
-        echo "SSH_PRIVATE_KEY=$(cat ./id_rsa)" >> $GITHUB_ENV
+        
+        # Export the private key (handle multiline safely)
+        echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+        cat ./id_rsa >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
