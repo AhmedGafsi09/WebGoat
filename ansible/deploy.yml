@@ -8,48 +8,44 @@
         update_cache: yes
         cache_valid_time: 3600
 
-    - name: Remove conflicting packages
-      apt:
-        name:
-          - containerd
-          - docker
-          - docker.io
-        state: absent
-        purge: yes
-
     - name: Install prerequisites
       apt:
         name:
           - apt-transport-https
           - ca-certificates
           - curl
-          - gnupg-agent
-          - software-properties-common
+          - gnupg
+          - python3-pip
         state: present
 
     - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
     - name: Add Docker repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        state: present
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    - name: Install Docker packages
+    - name: Update apt cache again
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
       apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
-          - python3-pip
         state: present
-        update_cache: yes
 
-    - name: Install Docker Compose
+    - name: Install Docker Compose via pip
       pip:
         name: docker-compose
+        state: present
+
+    - name: Ensure Docker group exists
+      group:
+        name: docker
         state: present
 
     - name: Add user to docker group
@@ -58,14 +54,14 @@
         groups: docker
         append: yes
 
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
     - name: Clone WebGoat repository
       git:
         repo: https://github.com/AhmedGafsi09/WebGoat.git
         dest: /home/azureuser/WebGoat
         force: yes
-
-    - name: Start Docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
