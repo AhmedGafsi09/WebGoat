@@ -96,6 +96,8 @@ jobs:
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
             echo "Deploying applications..."
 
+            # Remove control-plane taint to allow pod scheduling
+            kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule- || true
 
             # Create namespaces
             kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
@@ -104,8 +106,18 @@ jobs:
             # Deploy application manifests
             kubectl apply -f kubernetes/prometheus/ -n monitoring || true
             kubectl apply -f kubernetes/grafana/ -n monitoring || true
-            kubectl apply -f kubernetes/webgoat/ -n webgoat || true
+
+            # Deploy WebGoat application (deployment.yaml and service.yaml)
+            kubectl apply -f ~/WebGoat/kubernetes/deployment.yaml -n webgoat
+            kubectl apply -f ~/WebGoat/kubernetes/service.yaml -n webgoat
+
+            echo "Deployment complete. Verifying resources..."
+
+            # Verify WebGoat pods and service
+            kubectl get pods -n webgoat
+            kubectl get svc -n webgoat
           '
+
 
       - name: Debug Kubelet Status
         if: always()

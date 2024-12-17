@@ -13,6 +13,10 @@ spec:
       labels:
         app: webgoat
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: webgoat
         image: webgoat/webgoat
