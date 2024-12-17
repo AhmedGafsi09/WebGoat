@@ -95,8 +95,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
             echo "Deploying applications..."
-            cd ~/WebGoat
-            git pull || true
+
 
             # Create namespaces
             kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
