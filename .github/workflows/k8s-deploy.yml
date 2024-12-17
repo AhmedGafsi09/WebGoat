@@ -35,6 +35,10 @@ jobs:
             kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
             kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
             kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
+            kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
+            kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
+            kubectl apply -f kubernetes/quotas.yaml
+
             
             echo "Deploying Grafana..."
             kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
