@@ -23,24 +23,17 @@
         name:
           - containerd.io
           - containerd
+          - docker.io
         state: absent
         purge: yes
         force_apt_get: yes
-
-    - name: Clean apt packages
-      apt:
-        autoclean: yes
         autoremove: yes
 
-    - name: Install basic packages
+    - name: Install Docker
       apt:
-        name:
-          - docker.io
-          - python3-pip
-          - docker-compose 
+        name: docker.io
         state: present
         update_cache: yes
-        force_apt_get: yes
 
     - name: Add user to docker group
       user:
