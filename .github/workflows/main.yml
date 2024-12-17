@@ -10,8 +10,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      # On va définir KUBECONFIG en variable d'environnement globale au job.
-      # On stocke le kubeconfig dans $HOME/kubeconfig
       KUBECONFIG: ${{ github.workspace }}/kubeconfig
 
     steps:
@@ -21,10 +19,8 @@ jobs:
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > ${{ github.workspace }}/kubeconfig
-          chmod 600 ${{ github.workspace }}/kubeconfig
-
-          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          chmod 600 kubeconfig
           kubectl get nodes
 
       # 3. Installation de Terraform
@@ -33,18 +29,19 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      # 4. Terraform init/plan/apply
+      # 4. Terraform init/plan/apply avec gestion d'erreurs
       - name: Terraform Init
         working-directory: ./infrastructure
         run: terraform init
 
       - name: Terraform Import Resources
         working-directory: ./infrastructure
+        continue-on-error: true
         run: |
-          terraform import kubernetes_namespace_v1.monitoring monitoring
-          terraform import kubernetes_namespace_v1.webgoat webgoat
-          terraform import kubernetes_deployment.prometheus monitoring/prometheus
-          terraform import kubernetes_service.prometheus monitoring/prometheus
+          terraform import kubernetes_namespace_v1.monitoring monitoring || true
+          terraform import kubernetes_namespace_v1.webgoat webgoat || true
+          terraform import kubernetes_deployment.prometheus monitoring/prometheus || true
+          terraform import kubernetes_service.prometheus monitoring/prometheus || true
 
       - name: Terraform Plan
         working-directory: ./infrastructure
@@ -54,53 +51,81 @@ jobs:
         working-directory: ./infrastructure
         run: terraform apply -auto-approve
 
-      # 5. Installation d’Ansible
+      # 5. Installation d'Ansible
       - name: Install Ansible
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      # 6. Configuration SSH si nécessaire (optionnel)
+      # 6. Configuration SSH avec gestion d'erreurs
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       # 7. Exécution du playbook Ansible
       - name: Run Ansible Playbook
         run: |
           ansible-playbook -i ansible/inventory.ini ansible/deploy.yml --ssh-common-args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 
-      # 8. Déploiement sur Kubernetes
-      - name: Create namespaces
+      # 8. Déploiement Kubernetes avec vérifications et délais
+      - name: Check existing namespaces
         run: |
-          kubectl create namespace monitoring || true
-          kubectl create namespace webgoat || true
+          kubectl get ns monitoring || kubectl create namespace monitoring
+          kubectl get ns webgoat || kubectl create namespace webgoat
+          sleep 10
 
-      - name: Deploy Prometheus, Grafana, WebGoat
+      - name: Deploy Monitoring Stack
         run: |
-          kubectl apply -f kubernetes/prometheus/
-          kubectl apply -f kubernetes/grafana/
-          kubectl apply -f kubernetes/deployment.yaml
-          kubectl apply -f kubernetes/service.yaml
-          kubectl apply -f kubernetes/quotas.yaml
+          echo "Deploying Prometheus..."
+          kubectl apply -f kubernetes/prometheus/ || true
+          sleep 15
+          
+          echo "Deploying Grafana..."
+          kubectl apply -f kubernetes/grafana/ || true
+          sleep 15
+          
+          echo "Deploying resource quotas..."
+          kubectl apply -f kubernetes/quotas.yaml || true
+          sleep 10
 
-      # 9. Attendre la disponibilité des pods
-      - name: Wait for Prometheus
-        run: kubectl -n monitoring wait --for=condition=ready pod -l app=prometheus --timeout=300s
-
-      - name: Wait for Grafana
-        run: kubectl -n monitoring wait --for=condition=ready pod -l app=grafana --timeout=300s
-
-      - name: Wait for WebGoat
-        run: kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
-
-      # 10. Afficher les URLs d’accès
-      - name: Show Access URLs
+      - name: Deploy WebGoat
         run: |
+          echo "Deploying WebGoat..."
+          kubectl apply -f kubernetes/deployment.yaml || true
+          sleep 10
+          kubectl apply -f kubernetes/service.yaml || true
+
+      # 9. Vérification de l'état des pods avec timeout
+      - name: Wait for Pods Readiness
+        run: |
+          timeout 300s bash -c '
+          until kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=30s; do
+            sleep 5
+            echo "Waiting for Prometheus pods..."
+          done
+          until kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=30s; do
+            sleep 5
+            echo "Waiting for Grafana pods..."
+          done
+          until kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=30s; do
+            sleep 5
+            echo "Waiting for WebGoat pods..."
+          done
+          '
+
+      # 10. Affichage des URLs et vérification finale
+      - name: Verify Deployment and Show Access URLs
+        run: |
+          echo "Verifying all services..."
+          kubectl get pods -A
+          kubectl get services -A
+          
+          echo "Access URLs:"
           echo "WebGoat: http://20.63.16.243:31051/WebGoat"
           echo "Prometheus: http://20.63.16.243:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
           echo "Grafana: http://20.63.16.243:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
           echo "kube-state-metrics: http://20.63.16.243:31080/"
-          echo "SonarQube: http://20.63.16.243:9000/"

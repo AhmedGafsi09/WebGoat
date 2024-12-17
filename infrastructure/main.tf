@@ -11,17 +11,12 @@ provider "kubernetes" {
   config_path = "${path.cwd}/../kubeconfig"
 }
 
-# Namespace monitoring
 resource "kubernetes_namespace_v1" "monitoring" {
   metadata {
     name = "monitoring"
   }
-
   lifecycle {
-    ignore_changes = [
-      metadata[0].labels,
-      metadata[0].annotations,
-    ]
+    ignore_changes = all
   }
 }
 
@@ -29,23 +24,17 @@ resource "kubernetes_namespace_v1" "webgoat" {
   metadata {
     name = "webgoat"
   }
-
   lifecycle {
-    ignore_changes = [
-      metadata[0].labels,
-      metadata[0].annotations,
-    ]
+    ignore_changes = all
   }
 }
 
-# Déploiement Prometheus
 resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus"
-    # Notez l'indexation ici
     namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
   }
-
+  
   spec {
     replicas = 1
     selector {
@@ -53,23 +42,19 @@ resource "kubernetes_deployment" "prometheus" {
         app = "prometheus"
       }
     }
-
     template {
       metadata {
         labels = {
           app = "prometheus"
         }
       }
-
       spec {
         container {
           name  = "prometheus"
           image = "prom/prometheus"
-
           port {
             container_port = 9090
           }
-
           resources {
             limits = {
               cpu    = "500m"
@@ -84,13 +69,14 @@ resource "kubernetes_deployment" "prometheus" {
       }
     }
   }
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
-# Service Prometheus de type NodePort
 resource "kubernetes_service" "prometheus" {
   metadata {
     name      = "prometheus"
-    # Indexation ici également
     namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
   }
 
@@ -98,12 +84,13 @@ resource "kubernetes_service" "prometheus" {
     selector = {
       app = "prometheus"
     }
-
     port {
       port        = 9090
       target_port = 9090
     }
-
     type = "NodePort"
+  }
+  lifecycle {
+    ignore_changes = all
   }
 }
