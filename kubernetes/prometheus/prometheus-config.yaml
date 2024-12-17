@@ -29,7 +29,7 @@ data:
         static_configs:
           - targets:
               - '20.63.16.243:31069/metrics'
-
+              - 'kube-state-metrics.monitoring.svc.cluster.local:8080'
         metric_relabel_configs:
         - action: labelmap
           regex: __meta_kubernetes_node_label_(.+)
