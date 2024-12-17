@@ -47,22 +47,22 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
 
-      # Modification de l'étape Dependency Check
-      - name: Set JAVA_HOME
+      # Installation et exécution manuelle de Dependency Check
+      - name: Setup Dependency Check
         run: |
-          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> $GITHUB_ENV
+          VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt)
+          wget "https://github.com/jeremylong/DependencyCheck/releases/download/v${VERSION}/dependency-check-${VERSION}-release.zip"
+          unzip dependency-check-${VERSION}-release.zip
+          chmod +x dependency-check/bin/dependency-check.sh
 
-      - name: Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
-        with:
-          project: 'WebGoat'
-          path: '.'
-          format: 'HTML'
-          out: 'reports'
-          args: >
-            --failOnCVSS 11
+      - name: Run Dependency Check
+        run: |
+          ./dependency-check/bin/dependency-check.sh \
+            --project "WebGoat" \
+            --scan "." \
+            --format "HTML" \
+            --out "reports" \
+            --failOnCVSS 11 \
             --enableRetired
 
       - name: Lint Kubernetes files
