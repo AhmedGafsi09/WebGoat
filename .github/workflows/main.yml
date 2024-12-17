@@ -38,6 +38,12 @@ jobs:
         working-directory: ./infrastructure
         run: terraform init
 
+      - name: Terraform Import Resources
+        working-directory: ./infrastructure
+        run: |
+          terraform import kubernetes_namespace_v1.monitoring monitoring
+          terraform import kubernetes_namespace_v1.webgoat webgoat
+
       - name: Terraform Plan
         working-directory: ./infrastructure
         run: terraform plan
