@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "kubernetes" {
-  config_path    = "${path.cwd}/kubeconfig" 
+  config_path = "${path.cwd}/../kubeconfig"
 }
 
 # Namespace monitoring
