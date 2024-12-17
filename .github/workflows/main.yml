@@ -50,7 +50,6 @@ jobs:
 
       # 6. Configuration SSH si nécessaire pour Ansible (si Ansible gère une VM distante)
       - name: Set up SSH
-        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
