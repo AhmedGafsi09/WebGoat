@@ -64,6 +64,8 @@ jobs:
             echo "Prometheus: http://20.63.16.243:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
             echo "Grafana: http://20.63.16.243:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
             echo "kube-state-metrics: http://20.63.16.243:31080/"
+            echo "SonarQube: http://20.63.16.243:9000/"
+
 
             echo "\nService Status:"
             kubectl get pods,svc --all-namespaces | grep -E "NAME|monitoring|webgoat"

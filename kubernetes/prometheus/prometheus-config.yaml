@@ -11,22 +11,23 @@ data:
 
     scrape_configs:
       - job_name: 'webgoat'
-        metrics_path: '/actuator/prometheus'  # Retiré /WebGoat du chemin
+        metrics_path: '/WebGoat/actuator/prometheus'
         static_configs:
           - targets:
-              - '20.63.16.243:8080'
-              - 'webgoat.webgoat.svc.cluster.local:8080'
+              - '20.63.16.243:31051'  # Port NodePort de WebGoat
 
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['localhost:9090']
+          - targets: ['20.63.16.243:31090']  # Port NodePort de Prometheus
 
       - job_name: 'kubernetes'
-        kubernetes_sd_configs:
-          - role: node
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        scheme: https
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
         relabel_configs:
           - action: labelmap
             regex: __meta_kubernetes_node_label_(.+)
@@ -34,17 +35,21 @@ data:
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets:
-              - 'kube-state-metrics.monitoring.svc.cluster.local:8080'
-        metric_relabel_configs:
-        - action: labelmap
-          regex: __meta_kubernetes_node_label_(.+)
+              - '20.63.16.243:31080'  # Port NodePort de kube-state-metrics
+
+      - job_name: 'grafana'
+        static_configs:
+          - targets:
+              - '20.63.16.243:31300'  # Port NodePort de Grafana
 
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        scheme: https
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
@@ -53,8 +58,9 @@ data:
             action: replace
             target_label: __metrics_path__
             regex: (.+)
-          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          - source_labels: [__meta_kubernetes_namespace]
             action: replace
-            regex: ([^:]+)(?::\d+)?;(\d+)
-            replacement: $1:$2
-            target_label: __address__
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
