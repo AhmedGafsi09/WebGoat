@@ -23,6 +23,8 @@ jobs:
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
             echo "Setting up environment..."
             cd ~/WebGoat
+            pwd
+            ls -al
             git pull
 
             echo "Creating namespaces..."

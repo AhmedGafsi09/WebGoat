@@ -27,9 +27,9 @@ spec:
         - name: WEBGOAT_HOST
           value: "0.0.0.0"
         - name: WEBGOAT_PORT
-          value: "8080"
+          value: "9090"
         - name: SERVER_PORT
-          value: "8080"
+          value: "9090"
         resources:
           limits:
             cpu: "500m"
