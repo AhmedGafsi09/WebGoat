@@ -14,53 +14,73 @@ data:
         metrics_path: '/WebGoat/actuator/prometheus'
         static_configs:
           - targets:
-              - '20.63.16.243:31051'  # Port NodePort de WebGoat
+              - '20.63.16.243:31051'
 
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['20.63.16.243:31090']  # Port NodePort de Prometheus
+          - targets: ['20.63.16.243:31090']
 
       - job_name: 'kubernetes'
         scheme: https
+        metrics_path: /metrics
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
           insecure_skip_verify: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         kubernetes_sd_configs:
           - role: node
+            namespaces:
+              names: []
         relabel_configs:
+          - source_labels: [__meta_kubernetes_node_address_InternalIP]
+            regex: (.+)
+            target_label: __address__
+            replacement: ${1}:10250
           - action: labelmap
             regex: __meta_kubernetes_node_label_(.+)
 
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets:
-              - '20.63.16.243:31080'  # Port NodePort de kube-state-metrics
+              - '20.63.16.243:31080'
 
       - job_name: 'grafana'
         static_configs:
           - targets:
-              - '20.63.16.243:31300'  # Port NodePort de Grafana
+              - '20.63.16.243:31300'
 
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-            action: keep
+          - action: keep
             regex: true
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
+            source_labels: 
+            - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+          - action: replace
+            regex: (https?)
+            source_labels:
+            - __meta_kubernetes_pod_annotation_prometheus_io_scheme
+            target_label: __scheme__
+          - action: replace
             regex: (.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            action: replace
+            source_labels:
+            - __meta_kubernetes_pod_annotation_prometheus_io_path
+            target_label: __metrics_path__
+          - action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            source_labels:
+            - __address__
+            - __meta_kubernetes_pod_annotation_prometheus_io_port
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - action: replace
+            source_labels:
+            - __meta_kubernetes_namespace
             target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
+          - action: replace
+            source_labels:
+            - __meta_kubernetes_pod_name
             target_label: kubernetes_pod_name
