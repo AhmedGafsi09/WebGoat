@@ -44,8 +44,12 @@ jobs:
             echo "Cleaning up old WebGoat deployment..."
             kubectl delete -f kubernetes/deployment.yaml --ignore-not-found
             kubectl delete -f kubernetes/service.yaml --ignore-not-found
+
+            # Supprimer les ressources existantes
+            kubectl delete deployment -n webgoat webgoat
+            kubectl delete service -n webgoat webgoat
             sleep 10 
-            
+
             echo "Deploying WebGoat..."
             kubectl apply -f kubernetes/deployment.yaml
             kubectl apply -f kubernetes/service.yaml
