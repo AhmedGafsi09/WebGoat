@@ -18,6 +18,20 @@
       apt:
         update_cache: yes
 
+    - name: Remove conflicting packages
+      apt:
+        name:
+          - containerd.io
+          - containerd
+        state: absent
+        purge: yes
+        force_apt_get: yes
+
+    - name: Clean apt packages
+      apt:
+        autoclean: yes
+        autoremove: yes
+
     - name: Install basic packages
       apt:
         name:
@@ -26,7 +40,6 @@
         state: present
         update_cache: yes
         force_apt_get: yes
-
 
     - name: Install Docker Compose
       pip:
