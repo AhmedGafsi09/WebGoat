@@ -12,12 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn clean package
+
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
+        with:
+            args: >
+              -Dsonar.projectKey=WebGoat
+              -Dsonar.java.binaries=target/classes
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -27,12 +39,6 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL'
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
 
       - name: Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
