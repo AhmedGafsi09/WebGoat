@@ -8,31 +8,30 @@ terraform {
 }
 
 provider "kubernetes" {
-  # Assurez-vous que ce fichier existe et est accessible lors de l'exécution.
-  # Si vous utilisez une variable d'environnement KUBECONFIG, supprimez cette ligne
-  # et laissez Terraform utiliser le contexte courant.
+  # Assurez-vous que ce fichier existe et est accessible.
   config_path = "~/.kube/config"
 }
 
-# Crée le namespace monitoring
+# Namespace monitoring
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"
   }
 }
 
-# Crée le namespace webgoat
+# Namespace webgoat
 resource "kubernetes_namespace" "webgoat" {
   metadata {
     name = "webgoat"
   }
 }
 
-# Déploiement Prometheus dans le namespace monitoring
+# Déploiement Prometheus
 resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus"
-    namespace = kubernetes_namespace.monitoring.metadata.name
+    # Notez l'indexation ici
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
 
   spec {
@@ -79,7 +78,8 @@ resource "kubernetes_deployment" "prometheus" {
 resource "kubernetes_service" "prometheus" {
   metadata {
     name      = "prometheus"
-    namespace = kubernetes_namespace.monitoring.metadata.name
+    # Indexation ici également
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
 
   spec {
