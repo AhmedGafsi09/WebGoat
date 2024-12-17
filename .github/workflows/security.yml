@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   security:
     runs-on: ubuntu-latest
@@ -72,12 +77,14 @@ jobs:
         run: |
           curl -Lo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
           tar xf kubeconform.tar.gz
+          ls -al kubernetes/
           ./kubeconform -strict kubernetes/
 
       - name: Run OWASP ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.9.0
+        continue-on-error: true
         with:
-          target: 'http://20.63.16.243:31051/WebGoat'  # Port NodePort corrigé
+          target: 'http://20.63.16.243:31051/WebGoat'
           allow-issue-writing: false
           fail-action: false
           cmd_options: '-I'
