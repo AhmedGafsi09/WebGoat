@@ -19,7 +19,7 @@ resource "kubernetes_namespace_v1" "monitoring" {
     ignore_changes = all
   }
 }
-
+ 
 resource "kubernetes_namespace_v1" "webgoat" {
   metadata {
     name = "webgoat"
