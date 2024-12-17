@@ -36,24 +36,16 @@ jobs:
             -Dsonar.sources=src/main/java/
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-      # Modification de la configuration Trivy
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
-        continue-on-error: true  # Pour ne pas faire échouer le pipeline
+        continue-on-error: true
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          format: 'table'
+          output: 'trivy-results.txt'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'  # Ne pas faire échouer même avec des vulnérabilités
-
-      # Ajout de l'étape pour publier les résultats Trivy
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+          exit-code: '0'
 
       - name: Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
@@ -86,4 +78,4 @@ jobs:
           path: |
             reports/
             ./*zap*
-            trivy-results.sarif
+            trivy-results.txt
