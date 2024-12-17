@@ -29,11 +29,38 @@
         force_apt_get: yes
         autoremove: yes
 
+    - name: Clean Docker and containerd directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /var/lib/docker
+        - /var/lib/containerd
+        - /etc/docker
+        - /etc/containerd
+
     - name: Install Docker
       apt:
         name: docker.io
         state: present
         update_cache: yes
+
+    - name: Create containerd config directory
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Configure containerd
+      shell: containerd config default | tee /etc/containerd/config.toml
+
+    - name: Restart services
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+        daemon_reload: yes
+      with_items:
+        - containerd
+        - docker
 
     - name: Add user to docker group
       user:
@@ -41,8 +68,7 @@
         groups: docker
         append: yes
 
-    - name: Ensure Docker is running
-      service:
-        name: docker
-        state: started
-        enabled: yes
+    - name: Verify Docker installation
+      command: docker run hello-world
+      register: docker_test
+      changed_when: false
