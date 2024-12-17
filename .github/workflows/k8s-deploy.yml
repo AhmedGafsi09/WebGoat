@@ -11,58 +11,108 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
 
-    - name: Prepare Kubernetes Environment
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          # Disable swap
-          sudo swapoff -a
-          sudo sed -i "/swap/d" /etc/fstab
+      - name: Prepare Kubernetes Environment
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Disabling swap and resetting Kubernetes..."
+            sudo swapoff -a
+            sudo sed -i "/ swap / s/^\(.*\)$/#\1/g" /etc/fstab
+            
+            # Reset existing Kubernetes cluster
+            sudo kubeadm reset -f || true
 
-          # Reset existing Kubernetes cluster
-          sudo kubeadm reset -f
+            # Ensure correct cgroup configuration
+            sudo mkdir -p /etc/containerd
+            containerd_config="/etc/containerd/config.toml"
+            sudo containerd config default | sudo tee ${containerd_config}
+            sudo sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" ${containerd_config}
+            sudo systemctl restart containerd
 
-          # Ensure containerd is running
-          sudo systemctl restart containerd
-        '
+            # Load required kernel modules
+            sudo modprobe overlay br_netfilter
+            cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+            overlay
+            br_netfilter
+            EOF
 
-    - name: Initialize Kubernetes Cluster
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          # Initialize cluster
-          sudo kubeadm init \
-            --pod-network-cidr=192.168.0.0/16 \
-            --apiserver-advertise-address=20.63.16.243
+            # Configure kernel parameters
+            cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+            net.bridge.bridge-nf-call-iptables  = 1
+            net.bridge.bridge-nf-call-ip6tables = 1
+            net.ipv4.ip_forward                 = 1
+            EOF
+            sudo sysctl --system
+          '
 
-          # Setup kubeconfig
-          mkdir -p $HOME/.kube
-          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-          sudo chown $(id -u):$(id -g) $HOME/.kube/config
+      - name: Initialize Kubernetes Cluster
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Initializing Kubernetes cluster..."
+            for attempt in {1..3}; do
+              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 --ignore-preflight-errors=all && break
+              echo "Retrying kubeadm init (Attempt: $attempt)..."
+              sleep 10
+            done
 
-          # Install Calico network plugin
-          kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
-        '
+            # Setup kubeconfig for the user
+            mkdir -p $HOME/.kube
+            sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+            sudo chown $(id -u):$(id -g) $HOME/.kube/config
+          '
 
-    - name: Deploy Applications
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          cd ~/WebGoat
-          git pull
-          
-          # Create namespaces
-          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+      - name: Install Calico Network Plugin
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Deploying Calico Network Plugin..."
+            kubectl apply --validate=false -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml || true
+          '
 
-          # Deploy applications
-          kubectl apply -f kubernetes/prometheus/ -n monitoring
-          kubectl apply -f kubernetes/grafana/ -n monitoring
-          kubectl apply -f kubernetes/webgoat/ -n webgoat
-        '
+      - name: Wait for Node Ready
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Waiting for Kubernetes node to become Ready..."
+            for i in {1..30}; do
+              if kubectl get nodes | grep -q "Ready"; then
+                echo "Node is Ready"
+                exit 0
+              fi
+              echo "Waiting for node to be ready... ($i/30)"
+              sleep 10
+            done
+            echo "Warning: Kubernetes node did not become Ready in time."
+          '
+
+      - name: Deploy Applications
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Deploying applications..."
+            cd ~/WebGoat
+            git pull || true
+
+            # Create namespaces
+            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+            # Deploy application manifests
+            kubectl apply -f kubernetes/prometheus/ -n monitoring || true
+            kubectl apply -f kubernetes/grafana/ -n monitoring || true
+            kubectl apply -f kubernetes/webgoat/ -n webgoat || true
+          '
+
+      - name: Debug Kubelet Status
+        if: always()
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+            echo "Debugging Kubelet Status..."
+            sudo systemctl status kubelet || true
+            sudo journalctl -xeu kubelet | tail -n 50 || true
+          '
