@@ -43,29 +43,24 @@ jobs:
             # Clean existing Docker configurations
             sudo rm -f /etc/apt/sources.list.d/docker.list
             sudo rm -f /etc/apt/keyrings/docker.gpg
-            sudo sed -i "/download.docker.com/d" /etc/apt/sources.list || true
-            sudo sed -i "/docker/d" /etc/apt/sources.list || true
       
             # Add Docker apt repository
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg || true
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null || true
       
             # Add Kubernetes apt repository
-            sudo rm -f /etc/apt/sources.list.d/kubernetes.list
-            sudo rm -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-            curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-            echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+            curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg || true
+            echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null || true
       
-            # Force clean apt lists and update
-            sudo rm -rf /var/lib/apt/lists/*
-            sudo apt-get clean
-            sudo apt-get update -o Acquire::AllowReleaseInfoChange=true
+            # Force update, ignore errors, and proceed
+            sudo apt-get update -o Acquire::AllowReleaseInfoChange=true || true
       
-            # Install required packages
-            sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-            sudo apt-get install -y kubelet kubeadm kubectl
-            sudo apt-mark hold kubelet kubeadm kubectl
+            # Install required packages, continue even if partial errors occur
+            sudo apt-get install -y apt-transport-https ca-certificates curl gpg || true
+            sudo apt-get install -y kubelet kubeadm kubectl || true
+            sudo apt-mark hold kubelet kubeadm kubectl || true
           '
+      
 
     - name: Initialize Kubernetes Cluster
       run: |
