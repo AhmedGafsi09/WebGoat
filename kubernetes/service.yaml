@@ -4,11 +4,10 @@ metadata:
   name: webgoat
   namespace: webgoat
 spec:
-  type: NodePort
+  type: LoadBalancer 
   ports:
   - name: http
     port: 8080
     targetPort: 8080
-    nodePort: 31051 
   selector:
     app: webgoat
