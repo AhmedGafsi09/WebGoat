@@ -1,0 +1,5 @@
+10010	IGNORE	Cookie No HttpOnly Flag
+10020	IGNORE	Missing Anti-clickjacking Header
+10054	IGNORE	Cookie without SameSite Attribute
+90027	IGNORE	Cookie Slack Detector
+90028	IGNORE	Insecure HTTP Method
