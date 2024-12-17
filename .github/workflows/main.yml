@@ -1,4 +1,3 @@
-
 name: CI/CD Pipeline
 
 on:
@@ -8,60 +7,91 @@ on:
     branches: [ main ]
 
 jobs:
-  test-kubeconfig:
+  deploy:
     runs-on: ubuntu-latest
     steps:
+      # 1. Récupération du code
       - uses: actions/checkout@v3
-      
+
+      # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           export KUBECONFIG=$PWD/kubeconfig
           kubectl get nodes
 
+      # 3. Installation de Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
 
-# name: CI/CD Pipeline
+      # 4. Terraform init/plan/apply
+      - name: Terraform Init
+        run: |
+          cd infrastructure
+          terraform init
 
-# on:
-#   push:
-#     branches: [ main ]
-#   pull_request:
-#     branches: [ main ]
+      - name: Terraform Plan
+        run: |
+          cd infrastructure
+          terraform plan
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v3
+      - name: Terraform Apply
+        run: |
+          cd infrastructure
+          terraform apply -auto-approve
 
-#       - name: Azure login
-#         uses: azure/login@v1
-#         with:
-#           creds: ${{ secrets.SSH_PRIVATE_KEY }}
+      # 5. Installation d’Ansible
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
 
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v2
+      # 6. Configuration SSH si nécessaire pour Ansible (si Ansible gère une VM distante)
+      - name: Set up SSH
+        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Ajouter le host distant (si c’est une VM)
+          # Ex: ssh-keyscan -H <VM_IP> >> ~/.ssh/known_hosts
 
-#       - name: Terraform Init and Plan
-#         run: |
-#           cd infrastructure
-#           terraform init
-#           terraform plan
+      # 7. Exécution du playbook Ansible (par exemple pour configurer une VM, installer Docker, etc.)
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
 
-#       - name: Terraform Apply
-#         run: |
-#           cd infrastructure
-#           terraform apply -auto-approve
+      # 8. Déploiement sur Kubernetes (sans SSH, directement depuis GitHub Actions)
+      - name: Create namespaces
+        run: |
+          kubectl create namespace monitoring || true
+          kubectl create namespace webgoat || true
 
-#       - name: Configure Kubernetes
-#         uses: azure/k8s-set-context@v2
-#         with:
-#           method: service-account
+      - name: Deploy Prometheus, Grafana, WebGoat
+        run: |
+          kubectl apply -f kubernetes/prometheus/
+          kubectl apply -f kubernetes/grafana/
+          kubectl apply -f kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/service.yaml
+          kubectl apply -f kubernetes/quotas.yaml
 
-#       - name: Deploy to Kubernetes
-#         run: |
-#           kubectl create namespace webgoat || true
-#           kubectl create namespace monitoring || true
-#           kubectl apply -f kubernetes/prometheus/
-#           kubectl apply -f kubernetes/grafana/
-#           kubectl apply -f kubernetes/deployment.yaml
+      # 9. Attendre la disponibilité des pods
+      - name: Wait for Prometheus
+        run: kubectl -n monitoring wait --for=condition=ready pod -l app=prometheus --timeout=300s
+
+      - name: Wait for Grafana
+        run: kubectl -n monitoring wait --for=condition=ready pod -l app=grafana --timeout=300s
+
+      - name: Wait for WebGoat
+        run: kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
+
+      # 10. Afficher les URLs d’accès
+      - name: Show Access URLs
+        run: |
+          echo "WebGoat: http://20.63.16.243:31051/WebGoat"
+          echo "Prometheus: http://20.63.16.243:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
+          echo "Grafana: http://20.63.16.243:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
+          echo "kube-state-metrics: http://20.63.16.243:31080/"
+          echo "SonarQube: http://20.63.16.243:9000/"

@@ -1,35 +1,40 @@
 terraform {
   required_providers {
     kubernetes = {
-      source = "hashicorp/kubernetes"
+      source  = "hashicorp/kubernetes"
       version = "2.23.0"
     }
   }
 }
 
 provider "kubernetes" {
+  # Assurez-vous que ce fichier existe et est accessible lors de l'exécution.
+  # Si vous utilisez une variable d'environnement KUBECONFIG, supprimez cette ligne
+  # et laissez Terraform utiliser le contexte courant.
   config_path = "~/.kube/config"
 }
 
-# Create Namespaces
+# Crée le namespace monitoring
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"
   }
 }
 
+# Crée le namespace webgoat
 resource "kubernetes_namespace" "webgoat" {
   metadata {
     name = "webgoat"
   }
 }
 
-# Deploy Prometheus
+# Déploiement Prometheus dans le namespace monitoring
 resource "kubernetes_deployment" "prometheus" {
   metadata {
-    name = "prometheus"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    name      = "prometheus"
+    namespace = kubernetes_namespace.monitoring.metadata.name
   }
+
   spec {
     replicas = 1
     selector {
@@ -37,19 +42,23 @@ resource "kubernetes_deployment" "prometheus" {
         app = "prometheus"
       }
     }
+
     template {
       metadata {
         labels = {
           app = "prometheus"
         }
       }
+
       spec {
         container {
-          name = "prometheus"
+          name  = "prometheus"
           image = "prom/prometheus"
+
           port {
             container_port = 9090
           }
+
           resources {
             limits = {
               cpu    = "500m"
@@ -66,20 +75,23 @@ resource "kubernetes_deployment" "prometheus" {
   }
 }
 
-# Service for Prometheus
+# Service Prometheus de type NodePort
 resource "kubernetes_service" "prometheus" {
   metadata {
-    name = "prometheus"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    name      = "prometheus"
+    namespace = kubernetes_namespace.monitoring.metadata.name
   }
+
   spec {
     selector = {
       app = "prometheus"
     }
+
     port {
-      port = 9090
+      port        = 9090
       target_port = 9090
     }
+
     type = "NodePort"
   }
 }
