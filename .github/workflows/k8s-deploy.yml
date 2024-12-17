@@ -64,22 +64,37 @@ jobs:
 
     - name: Initialize Kubernetes Cluster
       run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          # Pre-pull required images
-          sudo kubeadm config images pull
-
-          # Initialize the cluster
-          sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243
-
-          # Configure kubectl for the user
-          mkdir -p $HOME/.kube
-          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-          sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-          # Remove the taint from the control-plane node
-          kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-        '
-
+            ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+              set -e
+              
+              # Pre-pull required images
+              sudo kubeadm config images pull
+        
+              # Attempt to initialize the cluster
+              echo "Initializing Kubernetes cluster..."
+              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 || true
+        
+              # Debugging kubelet status and logs if initialization fails
+              if ! sudo systemctl is-active --quiet kubelet; then
+                echo "Kubelet is not running. Debugging kubelet status..."
+                sudo systemctl status kubelet
+                sudo journalctl -xeu kubelet | tail -n 50
+                exit 1
+              fi
+        
+              # Retry the kubeadm init command if kubelet is running but failed earlier
+              echo "Retrying kubeadm init..."
+              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243
+              
+              # Configure kubectl for the user
+              mkdir -p $HOME/.kube
+              sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+              sudo chown $(id -u):$(id -g) $HOME/.kube/config
+        
+              # Remove the taint from the control-plane node
+              kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+            '
+        
     - name: Install Calico Network Plugin
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
