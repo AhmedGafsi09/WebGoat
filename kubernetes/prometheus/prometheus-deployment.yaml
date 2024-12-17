@@ -50,7 +50,7 @@ spec:
       labels:
         app: prometheus
     spec:
-      serviceAccountName: prometheus  # Ajouté
+      serviceAccountName: prometheus 
       tolerations:
       - key: "node-role.kubernetes.io/control-plane"
         operator: "Exists"
@@ -74,3 +74,20 @@ spec:
       - name: config-volume
         configMap:
           name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  type: NodePort
+  ports:
+  - name: web
+    port: 9090
+    targetPort: 9090
+    nodePort: 31090  
+  selector:
+    app: prometheus

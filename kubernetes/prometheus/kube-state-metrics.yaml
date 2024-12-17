@@ -70,10 +70,11 @@ metadata:
   labels:
     app: kube-state-metrics
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
   - name: metrics
     port: 8080
     targetPort: metrics
+    nidePort: 31080
   selector:
     app: kube-state-metrics
