@@ -9,7 +9,7 @@ terraform {
 
 provider "kubernetes" {
   # Assurez-vous que ce fichier existe et est accessible.
-  config_path = "~/.kube/config"
+  # config_path = "~/.kube/config"
 }
 
 # Namespace monitoring
