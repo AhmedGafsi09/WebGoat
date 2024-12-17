@@ -1,15 +1,13 @@
 name: Deploy to Kubernetes
 
 on:
-  workflow_run:
-    workflows: ["Build and Push Docker Image for WebGoat"]
-    types:
-      - completed
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v3
 
@@ -20,90 +18,59 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
 
-      - name: Prepare Kubernetes Environment
-        run: |
-          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            echo "Preparing environment..."
-            # Disable swap
-            sudo swapoff -a
-            sudo sed -i "/ swap / s/^\(.*\)$/#\1/g" /etc/fstab
-            
-            # Reset Kubernetes
-            sudo kubeadm reset -f || true
-            sudo rm -rf ~/.kube
-            
-            # Configure containerd
-            sudo mkdir -p /etc/containerd
-            containerd_config="/etc/containerd/config.toml"
-            sudo containerd config default | sudo tee ${containerd_config}
-            sudo sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" ${containerd_config}
-            sudo systemctl restart containerd
-
-            # Network configuration
-            sudo modprobe overlay
-            sudo modprobe br_netfilter
-            
-            cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-            net.bridge.bridge-nf-call-iptables  = 1
-            net.bridge.bridge-nf-call-ip6tables = 1
-            net.ipv4.ip_forward                 = 1
-            EOF
-            sudo sysctl --system
-          '
-
-      - name: Initialize Kubernetes Cluster
-        run: |
-          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            echo "Initializing Kubernetes cluster..."
-            sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 --ignore-preflight-errors=all
-            
-            # Setup kubeconfig
-            rm -rf $HOME/.kube
-            mkdir -p $HOME/.kube
-            sudo cp -f /etc/kubernetes/admin.conf $HOME/.kube/config
-            sudo chown $(id -u):$(id -g) $HOME/.kube/config
-          '
-
-      - name: Install Calico
-        run: |
-          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
-            
-            # Remove control-plane taint
-            kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule- || true
-            
-            # Wait for Calico pods
-            echo "Waiting for Calico pods..."
-            kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system --timeout=300s
-          '
-
-      - name: Deploy WebGoat
+      - name: Deploy Monitoring Stack
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
             # Create namespaces
-            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
             kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
 
             # Update repository
             cd ~/WebGoat
             git pull
 
-            # Apply configurations
-            kubectl apply -f kubernetes/prometheus/ -n monitoring
-            kubectl apply -f kubernetes/grafana/ -n monitoring
-            kubectl apply -f kubernetes/webgoat/ -n webgoat
-
-            # Verify deployments
-            echo "WebGoat Deployment Status:"
-            kubectl get all -n webgoat
+            # Deploy monitoring stack
+            echo "Deploying Prometheus and related services..."
+            kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
+            kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
+            kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
             
-            echo "Monitoring Deployment Status:"
-            kubectl get all -n monitoring
+            # Deploy Grafana
+            echo "Deploying Grafana..."
+            kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
+            
+            # Wait for monitoring services
+            echo "Waiting for monitoring services to be ready..."
+            kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=300s
+            kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=300s
+            kubectl wait --for=condition=ready pod -l app=kube-state-metrics -n monitoring --timeout=300s
+
+            # Get service info
+            echo "Monitoring Services NodePorts:"
+            kubectl get svc -n monitoring
           '
 
-      - name: Verify Services
+      - name: Deploy WebGoat
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            echo "Service NodePorts:"
-            kubectl get services --all-namespaces | grep NodePort
+            cd ~/WebGoat
+            
+            # Deploy WebGoat
+            echo "Deploying WebGoat..."
+            kubectl apply -f kubernetes/deployment.yaml
+            kubectl apply -f kubernetes/service.yaml
+            
+            # Wait for WebGoat to be ready
+            echo "Waiting for WebGoat to be ready..."
+            kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=300s
+            
+            # Get service info
+            echo "WebGoat Service NodePort:"
+            kubectl get svc -n webgoat
+            
+            # Verify all deployments
+            echo "\nAll Deployments Status:"
+            kubectl get pods --all-namespaces
+            echo "\nAll Services Status:"
+            kubectl get services --all-namespaces
           '
