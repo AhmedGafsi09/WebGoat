@@ -11,4 +11,4 @@ spec:
     targetPort: 8082
     nodePort: 31051 
   selector:
-    app: webgoat
+    app: webgoat 
