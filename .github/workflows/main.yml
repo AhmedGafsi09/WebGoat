@@ -21,13 +21,8 @@ jobs:
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          # Ajouter ces lignes
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
-          chmod 600 ~/.ssh/config
+          echo "${{ secrets.KUBECONFIG }}" > ${{ github.workspace }}/kubeconfig
+          chmod 600 ${{ github.workspace }}/kubeconfig
 
           echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
           kubectl get nodes
@@ -75,7 +70,7 @@ jobs:
       # 7. Exécution du playbook Ansible
       - name: Run Ansible Playbook
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+          ansible-playbook -i ansible/inventory.ini ansible/deploy.yml --ssh-common-args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 
       # 8. Déploiement sur Kubernetes
       - name: Create namespaces
