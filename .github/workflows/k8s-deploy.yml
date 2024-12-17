@@ -20,110 +20,49 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
 
-    - name: Reset and Clean Kubernetes
+    - name: Prepare Kubernetes Environment
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Stopping kubelet and cleaning up previous Kubernetes setup..."
-          
-          # Stop kubelet and container runtime
-          sudo systemctl stop kubelet || true
-          sudo systemctl stop containerd || true
+          # Disable swap
+          sudo swapoff -a
+          sudo sed -i "/swap/d" /etc/fstab
 
-          # Reset Kubernetes
-          sudo kubeadm reset -f || true
+          # Reset existing Kubernetes cluster
+          sudo kubeadm reset -f
 
-          # Clean up Kubernetes manifests and configuration
-          sudo rm -rf /etc/kubernetes/ || true
-          sudo rm -rf /var/lib/kubelet/* || true
-          sudo rm -rf /var/lib/etcd/* || true
-          sudo rm -rf ~/.kube/ || true
-
-          # Clean up ports
-          sudo lsof -i :10250,10257,10259 | awk '\''NR>1 {print $2}'\'' | xargs -r sudo kill -9 || true
-
-          echo "Kubernetes cleanup complete."
-        '
-
-    - name: Install Dependencies on VM
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Installing dependencies..."
-          
-          # Prepare directories for new keyrings
-          sudo mkdir -p /etc/apt/keyrings || true
-          
-          # Clean existing Docker configurations
-          sudo rm -f /etc/apt/sources.list.d/docker.list || true
-          sudo rm -f /etc/apt/keyrings/docker.gpg || true
-          
-          # Add Docker apt repository
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg || true
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null || true
-          
-          # Add Kubernetes apt repository
-          curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg || true
-          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null || true
-          
-          # Update apt and install required packages
-          sudo apt-get update -o Acquire::AllowReleaseInfoChange=true || true
-          sudo apt-get install -y apt-transport-https ca-certificates curl gpg || true
-          sudo apt-get install -y kubelet kubeadm kubectl || true
-          sudo apt-mark hold kubelet kubeadm kubectl || true
+          # Ensure containerd is running
+          sudo systemctl restart containerd
         '
 
     - name: Initialize Kubernetes Cluster
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Initializing Kubernetes cluster..."
+          # Initialize cluster
+          sudo kubeadm init \
+            --pod-network-cidr=192.168.0.0/16 \
+            --apiserver-advertise-address=20.63.16.243
 
-          # Pre-pull required images
-          sudo kubeadm config images pull || true
+          # Setup kubeconfig
+          mkdir -p $HOME/.kube
+          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+          sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-          # Run kubeadm init with ignored preflight errors (to avoid known conflicts)
-          sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 --ignore-preflight-errors=all || true
-
-          # Configure kubectl for the user
-          mkdir -p $HOME/.kube || true
-          sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config || true
-          sudo chown $(id -u):$(id -g) $HOME/.kube/config || true
-
-          # Remove the taint from the control-plane node
-          kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
-
-          echo "Kubernetes cluster initialized successfully (or skipped)."
-        '
-
-    - name: Install Calico Network Plugin
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Installing Calico network plugin..."
-          kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml || true
-        '
-
-    - name: Wait for Node Ready
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Waiting for Kubernetes node to become Ready..."
-          for i in {1..30}; do
-            if kubectl get nodes | grep -q "Ready"; then
-              echo "Node is Ready"
-              exit 0
-            fi
-            echo "Waiting for node to be ready... ($i/30)"
-            sleep 10
-          done
-          exit 0  # Do not fail if node does not become ready in time
+          # Install Calico network plugin
+          kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
         '
 
     - name: Deploy Applications
       run: |
         ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-          echo "Deploying applications..."
-          cd ~/WebGoat || exit 0
-          git pull || true
-          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f - || true
-          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f - || true
-          kubectl apply -f kubernetes/prometheus/ -n monitoring || true
-          kubectl apply -f kubernetes/grafana/ -n monitoring || true
-          kubectl apply -f kubernetes/webgoat/ -n webgoat || true
+          cd ~/WebGoat
+          git pull
+          
+          # Create namespaces
+          kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+          # Deploy applications
+          kubectl apply -f kubernetes/prometheus/ -n monitoring
+          kubectl apply -f kubernetes/grafana/ -n monitoring
+          kubectl apply -f kubernetes/webgoat/ -n webgoat
         '
