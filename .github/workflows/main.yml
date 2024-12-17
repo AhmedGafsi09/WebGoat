@@ -9,6 +9,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # On va définir KUBECONFIG en variable d'environnement globale au job.
+      # On stocke le kubeconfig dans $HOME/kubeconfig
+      KUBECONFIG: $HOME/kubeconfig
+
     steps:
       # 1. Récupération du code
       - uses: actions/checkout@v3
@@ -16,8 +21,7 @@ jobs:
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
-          export KUBECONFIG=$PWD/kubeconfig
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/kubeconfig
           kubectl get nodes
 
       # 3. Installation de Terraform
@@ -28,19 +32,16 @@ jobs:
 
       # 4. Terraform init/plan/apply
       - name: Terraform Init
-        run: |
-          cd infrastructure
-          terraform init
+        working-directory: ./infrastructure
+        run: terraform init
 
       - name: Terraform Plan
-        run: |
-          cd infrastructure
-          terraform plan
+        working-directory: ./infrastructure
+        run: terraform plan
 
       - name: Terraform Apply
-        run: |
-          cd infrastructure
-          terraform apply -auto-approve
+        working-directory: ./infrastructure
+        run: terraform apply -auto-approve
 
       # 5. Installation d’Ansible
       - name: Install Ansible
@@ -48,21 +49,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      # 6. Configuration SSH si nécessaire pour Ansible (si Ansible gère une VM distante)
+      # 6. Configuration SSH si nécessaire (optionnel)
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # Ajouter le host distant (si c’est une VM)
-          # Ex: ssh-keyscan -H <VM_IP> >> ~/.ssh/known_hosts
 
-      # 7. Exécution du playbook Ansible (par exemple pour configurer une VM, installer Docker, etc.)
+      # 7. Exécution du playbook Ansible
       - name: Run Ansible Playbook
         run: |
           ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
 
-      # 8. Déploiement sur Kubernetes (sans SSH, directement depuis GitHub Actions)
+      # 8. Déploiement sur Kubernetes
       - name: Create namespaces
         run: |
           kubectl create namespace monitoring || true
