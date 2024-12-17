@@ -43,7 +43,7 @@ resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus"
     # Notez l'indexation ici
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
   }
 
   spec {
@@ -91,7 +91,7 @@ resource "kubernetes_service" "prometheus" {
   metadata {
     name      = "prometheus"
     # Indexation ici également
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
   }
 
   spec {
