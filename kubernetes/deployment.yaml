@@ -13,39 +13,17 @@ spec:
       labels:
         app: webgoat
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: webgoat
         image: webgoat/webgoat
-        command: ["/bin/sh", "-c"]
-        args: 
-          - |
-            set -x
-            echo "Starting WebGoat with debugging"
-            env
-            netstat -tuln
-            whoami
-            pwd
-            java -version
-            export JAVA_TOOL_OPTIONS="-Xlog:all=debug:file=debug.log"
-            java -jar /home/webgoat/webgoat.jar
-        ports:
-        - containerPort: 8080
-          name: http
         env:
-        - name: WEBGOAT_HOST
-          value: "0.0.0.0"
         - name: WEBGOAT_PORT
           value: "8080"
-        - name: SERVER_PORT
-          value: "8080"
-        - name: SERVER_SERVLET_CONTEXT_PATH
-          value: "/WebGoat"
-        - name: LOGGING_LEVEL_ROOT
-          value: "DEBUG"
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
+        - name: WEBGOAT_HOST
+          value: "0.0.0.0"
+        ports:
+        - containerPort: 8080
