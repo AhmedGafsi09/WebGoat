@@ -41,6 +41,11 @@ jobs:
             kubectl -n monitoring wait --for=condition=ready pod -l app=prometheus --timeout=300s
             kubectl -n monitoring wait --for=condition=ready pod -l app=grafana --timeout=300s
             
+            echo "Cleaning up old WebGoat deployment..."
+            kubectl delete -f kubernetes/deployment.yaml --ignore-not-found
+            kubectl delete -f kubernetes/service.yaml --ignore-not-found
+            sleep 10 
+            
             echo "Deploying WebGoat..."
             kubectl apply -f kubernetes/deployment.yaml
             kubectl apply -f kubernetes/service.yaml
