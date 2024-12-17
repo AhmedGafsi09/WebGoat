@@ -12,10 +12,6 @@ spec:
     metadata:
       labels:
         app: webgoat
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/path: "/actuator/prometheus"
-        prometheus.io/port: "8080"
     spec:
       tolerations:
       - key: "node-role.kubernetes.io/control-plane"
@@ -31,11 +27,3 @@ spec:
           value: "0.0.0.0"
         ports:
         - containerPort: 8080
-        volumeMounts:
-        - name: config-volume
-          mountPath: /application.yml
-          subPath: application.yml
-      volumes:
-      - name: config-volume
-        configMap:
-          name: webgoat-config
