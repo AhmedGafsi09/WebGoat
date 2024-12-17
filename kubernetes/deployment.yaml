@@ -21,15 +21,15 @@ spec:
       - name: webgoat
         image: webgoat/webgoat
         ports:
-        - containerPort: 8081
+        - containerPort: 8082
           name: http
         env:
         - name: WEBGOAT_HOST
           value: "0.0.0.0"
         - name: WEBGOAT_PORT
-          value: "8081"
+          value: "8082"
         - name: SERVER_PORT
-          value: "8081"
+          value: "8082"
         resources:
           limits:
             cpu: "500m"
