@@ -22,6 +22,7 @@ jobs:
       - name: Set KUBECONFIG
         run: |
           echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
           kubectl get nodes
 
       # 3. Installation de Terraform
