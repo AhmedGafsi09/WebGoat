@@ -18,62 +18,88 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
 
-      - name: Deploy Monitoring Stack
+      - name: Deploy stack
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            echo "Updating repository..."
+            # Debug info
+            echo "Node capacity:"
+            kubectl describe node aks-node-1 | grep Capacity -A 5
+            
+            echo "Current resource usage:"
+            kubectl describe node aks-node-1 | grep "Allocated resources" -A 5
+
+            # Update repo
             cd ~/WebGoat
             git pull
 
-            echo "Creating namespaces..."
-            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+            # Clean up old resources
+            echo "Cleaning up old resources..."
+            kubectl delete deployment webgoat -n webgoat || true
+            kubectl delete service webgoat -n webgoat || true
+            
+            # Create namespaces
             kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
-            echo "Deploying Prometheus stack..."
-            kubectl delete -f kubernetes/prometheus/ -n monitoring || true
-            kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
-            kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
-            kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
-            
-            echo "Deploying Grafana..."
-            kubectl delete -f kubernetes/grafana/ -n monitoring || true
-            kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
-            
-            echo "Waiting for monitoring services..."
-            kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=300s
-            kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=300s
-            
-            echo "Monitoring service ports:"
-            kubectl get svc -n monitoring
-          '
+            # Deploy WebGoat with minimal config first
+            echo "Deploying WebGoat with minimal configuration..."
+            cat > /tmp/webgoat-deploy.yaml << EOL
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: webgoat
+              namespace: webgoat
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: webgoat
+              template:
+                metadata:
+                  labels:
+                    app: webgoat
+                spec:
+                  tolerations:
+                  - key: "node-role.kubernetes.io/control-plane"
+                    operator: "Exists"
+                    effect: "NoSchedule"
+                  containers:
+                  - name: webgoat
+                    image: webgoat/webgoat
+                    ports:
+                    - containerPort: 8080
+                    resources:
+                      requests:
+                        memory: "256Mi"
+                        cpu: "200m"
+                      limits:
+                        memory: "512Mi"
+                        cpu: "500m"
+            EOL
 
-      - name: Deploy WebGoat
-        run: |
-          ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            cd ~/WebGoat
-            
-            echo "Removing old WebGoat deployment..."
-            kubectl delete -f kubernetes/deployment.yaml || true
-            kubectl delete -f kubernetes/service.yaml || true
-            
-            echo "Deploying new WebGoat..."
-            kubectl apply -f kubernetes/deployment.yaml
-            kubectl apply -f kubernetes/service.yaml
-            
-            echo "Waiting for WebGoat to be ready..."
-            kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=300s || true
-            
-            echo "Service information:"
-            echo "-------------------"
-            echo "WebGoat service:"
-            kubectl get svc -n webgoat
-            
-            echo "\nPrometheus service:"
-            kubectl get svc -n monitoring prometheus
-            
-            echo "\nGrafana service:"
-            kubectl get svc -n monitoring grafana
-            
-            echo "\nPod status:"
-            kubectl get pods --all-namespaces
+            cat > /tmp/webgoat-svc.yaml << EOL
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: webgoat
+              namespace: webgoat
+            spec:
+              type: NodePort
+              ports:
+              - port: 8080
+                targetPort: 8080
+              selector:
+                app: webgoat
+            EOL
+
+            kubectl apply -f /tmp/webgoat-deploy.yaml
+            kubectl apply -f /tmp/webgoat-svc.yaml
+
+            # Wait and verify
+            echo "Waiting for WebGoat pod..."
+            sleep 10
+            echo "Pod status:"
+            kubectl get pods -n webgoat
+            echo "Pod details:"
+            kubectl describe pods -n webgoat
           '
