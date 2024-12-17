@@ -21,8 +21,13 @@ jobs:
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > ${{ github.workspace }}/kubeconfig
-          chmod 600 ${{ github.workspace }}/kubeconfig
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Ajouter ces lignes
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
           echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
           kubectl get nodes
