@@ -17,16 +17,16 @@ spec:
       - name: webgoat
         image: webgoat/webgoat
         ports:
-        - containerPort: 8080
+        - containerPort: 8888
           name: http
         env:
         - name: WEBGOAT_HOST
           value: "0.0.0.0"
         - name: WEBGOAT_PORT
-          value: "8080"
+          value: "8888"
         - name: SERVER_PORT
-          value: "8080"
-        - name: SPRING_MVC_SERVLET_PATH
+          value: "8888"
+        - name: SERVER_SERVLET_CONTEXT_PATH
           value: "/WebGoat"
         resources:
           limits:
