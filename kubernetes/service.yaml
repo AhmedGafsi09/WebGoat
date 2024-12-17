@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: webgoat
   namespace: webgoat
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "false"
 spec:
   type: NodePort
   ports:
@@ -11,4 +13,4 @@ spec:
     targetPort: 8080
     nodePort: 31051 
   selector:
-    app: webgoat 
+    app: webgoat

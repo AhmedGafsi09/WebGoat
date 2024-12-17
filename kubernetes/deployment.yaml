@@ -26,7 +26,7 @@ spec:
           value: "8080"
         - name: SERVER_PORT
           value: "8080"
-        - name: SERVER_CONTEXT_PATH
+        - name: SPRING_MVC_SERVLET_PATH
           value: "/WebGoat"
         resources:
           limits:
