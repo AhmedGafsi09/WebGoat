@@ -13,10 +13,6 @@ spec:
       labels:
         app: webgoat
     spec:
-      tolerations:
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
       containers:
       - name: webgoat
         image: webgoat/webgoat
@@ -30,6 +26,8 @@ spec:
           value: "8080"
         - name: SERVER_PORT
           value: "8080"
+        - name: SERVER_CONTEXT_PATH
+          value: "/WebGoat"
         resources:
           limits:
             cpu: "500m"
