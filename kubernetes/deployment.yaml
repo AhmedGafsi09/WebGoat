@@ -16,18 +16,32 @@ spec:
       containers:
       - name: webgoat
         image: webgoat/webgoat
+        command: ["/bin/sh", "-c"]
+        args: 
+          - |
+            set -x
+            echo "Starting WebGoat with debugging"
+            env
+            netstat -tuln
+            whoami
+            pwd
+            java -version
+            export JAVA_TOOL_OPTIONS="-Xlog:all=debug:file=debug.log"
+            java -jar /home/webgoat/webgoat.jar
         ports:
-        - containerPort: 8888
+        - containerPort: 8080
           name: http
         env:
         - name: WEBGOAT_HOST
           value: "0.0.0.0"
         - name: WEBGOAT_PORT
-          value: "8888"
+          value: "8080"
         - name: SERVER_PORT
-          value: "8888"
+          value: "8080"
         - name: SERVER_SERVLET_CONTEXT_PATH
           value: "/WebGoat"
+        - name: LOGGING_LEVEL_ROOT
+          value: "DEBUG"
         resources:
           limits:
             cpu: "500m"
