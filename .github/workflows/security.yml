@@ -1,23 +1,18 @@
 name: Security and Quality Checks
 
 on:
-  workflow_run:
-    workflows: ["Main / Pull Requests Build"]
-    types:
-      - completed
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   security:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v3
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
         with:
-          name: build-artifacts
-          path: target/
+          fetch-depth: 0  # Important pour SonarQube
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -25,6 +20,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
+
+      - name: Build for SonarQube
+        run: mvn clean compile -DskipTests
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
