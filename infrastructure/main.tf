@@ -12,16 +12,29 @@ provider "kubernetes" {
 }
 
 # Namespace monitoring
-resource "kubernetes_namespace" "monitoring" {
+resource "kubernetes_namespace_v1" "monitoring" {
   metadata {
     name = "monitoring"
   }
+
+  lifecycle {
+    ignore_changes = [
+      metadata[0].labels,
+      metadata[0].annotations,
+    ]
+  }
 }
 
-# Namespace webgoat
-resource "kubernetes_namespace" "webgoat" {
+resource "kubernetes_namespace_v1" "webgoat" {
   metadata {
     name = "webgoat"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      metadata[0].labels,
+      metadata[0].annotations,
+    ]
   }
 }
 
