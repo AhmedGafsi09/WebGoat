@@ -21,32 +21,29 @@ jobs:
       - name: Deploy Monitoring Stack
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-            # Create namespaces
-            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
-
-            # Update repository
+            echo "Updating repository..."
             cd ~/WebGoat
             git pull
 
-            # Deploy monitoring stack
-            echo "Deploying Prometheus and related services..."
+            echo "Creating namespaces..."
+            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+
+            echo "Deploying Prometheus stack..."
+            kubectl delete -f kubernetes/prometheus/ -n monitoring || true
             kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
             kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
             kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
             
-            # Deploy Grafana
             echo "Deploying Grafana..."
+            kubectl delete -f kubernetes/grafana/ -n monitoring || true
             kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
             
-            # Wait for monitoring services
-            echo "Waiting for monitoring services to be ready..."
+            echo "Waiting for monitoring services..."
             kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=300s
             kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=300s
-            kubectl wait --for=condition=ready pod -l app=kube-state-metrics -n monitoring --timeout=300s
-
-            # Get service info
-            echo "Monitoring Services NodePorts:"
+            
+            echo "Monitoring service ports:"
             kubectl get svc -n monitoring
           '
 
@@ -55,22 +52,28 @@ jobs:
           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
             cd ~/WebGoat
             
-            # Deploy WebGoat
-            echo "Deploying WebGoat..."
+            echo "Removing old WebGoat deployment..."
+            kubectl delete -f kubernetes/deployment.yaml || true
+            kubectl delete -f kubernetes/service.yaml || true
+            
+            echo "Deploying new WebGoat..."
             kubectl apply -f kubernetes/deployment.yaml
             kubectl apply -f kubernetes/service.yaml
             
-            # Wait for WebGoat to be ready
             echo "Waiting for WebGoat to be ready..."
-            kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=300s
+            kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=300s || true
             
-            # Get service info
-            echo "WebGoat Service NodePort:"
+            echo "Service information:"
+            echo "-------------------"
+            echo "WebGoat service:"
             kubectl get svc -n webgoat
             
-            # Verify all deployments
-            echo "\nAll Deployments Status:"
+            echo "\nPrometheus service:"
+            kubectl get svc -n monitoring prometheus
+            
+            echo "\nGrafana service:"
+            kubectl get svc -n monitoring grafana
+            
+            echo "\nPod status:"
             kubectl get pods --all-namespaces
-            echo "\nAll Services Status:"
-            kubectl get services --all-namespaces
           '
