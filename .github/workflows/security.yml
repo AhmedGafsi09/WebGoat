@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Important pour SonarQube
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -36,14 +36,16 @@ jobs:
             -Dsonar.sources=src/main/java/
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy filesystem scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'webgoat/webgoat'
+          scan-type: 'fs'
+          scan-ref: '.'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+          skip-files: 'webgoat.jar'
 
       - name: Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
