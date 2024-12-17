@@ -17,10 +17,6 @@ jobs:
         env:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-            args: > 
-            -Dsonar.projectKey=webgoat 
-            -Dsonar.sources=.
 
 
       - name: Run Trivy vulnerability scanner
