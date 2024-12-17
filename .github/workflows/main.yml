@@ -12,7 +12,7 @@ jobs:
     env:
       # On va définir KUBECONFIG en variable d'environnement globale au job.
       # On stocke le kubeconfig dans $HOME/kubeconfig
-      KUBECONFIG: $HOME/kubeconfig
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
 
     steps:
       # 1. Récupération du code
@@ -21,7 +21,7 @@ jobs:
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/kubeconfig
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
           kubectl get nodes
 
       # 3. Installation de Terraform
