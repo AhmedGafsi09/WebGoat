@@ -43,6 +43,8 @@ jobs:
         run: |
           terraform import kubernetes_namespace_v1.monitoring monitoring
           terraform import kubernetes_namespace_v1.webgoat webgoat
+          terraform import kubernetes_deployment.prometheus monitoring/prometheus
+          terraform import kubernetes_service.prometheus monitoring/prometheus
 
       - name: Terraform Plan
         working-directory: ./infrastructure
