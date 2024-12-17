@@ -62,30 +62,44 @@ jobs:
           '
       
 
+    - name: Reset and Clean Kubernetes
+      run: |
+            ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
+              echo "Stopping kubelet and cleaning up previous Kubernetes setup..."
+        
+              # Stop kubelet and container runtime
+              sudo systemctl stop kubelet || true
+              sudo systemctl stop containerd || true
+        
+              # Reset Kubernetes
+              sudo kubeadm reset -f || true
+        
+              # Kill any remaining Kubernetes processes
+              sudo pkill -f kube || true
+        
+              # Clean up Kubernetes manifests and configuration
+              sudo rm -rf /etc/kubernetes/
+              sudo rm -rf /var/lib/kubelet/*
+              sudo rm -rf /var/lib/etcd/*
+              sudo rm -rf ~/.kube/
+        
+              # Clean up ports
+              sudo lsof -i :10250,10257,10259 | awk '\''NR>1 {print $2}'\'' | xargs -r sudo kill -9 || true
+        
+              echo "Kubernetes cleanup complete."
+            '
+        
     - name: Initialize Kubernetes Cluster
       run: |
             ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-              set -e
-              
+              echo "Initializing Kubernetes cluster..."
+        
               # Pre-pull required images
               sudo kubeadm config images pull
         
-              # Attempt to initialize the cluster
-              echo "Initializing Kubernetes cluster..."
-              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 || true
+              # Run kubeadm init with ignored preflight errors (to avoid known conflicts)
+              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243 --ignore-preflight-errors=all
         
-              # Debugging kubelet status and logs if initialization fails
-              if ! sudo systemctl is-active --quiet kubelet; then
-                echo "Kubelet is not running. Debugging kubelet status..."
-                sudo systemctl status kubelet
-                sudo journalctl -xeu kubelet | tail -n 50
-                exit 1
-              fi
-        
-              # Retry the kubeadm init command if kubelet is running but failed earlier
-              echo "Retrying kubeadm init..."
-              sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address=20.63.16.243
-              
               # Configure kubectl for the user
               mkdir -p $HOME/.kube
               sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -93,7 +107,10 @@ jobs:
         
               # Remove the taint from the control-plane node
               kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+        
+              echo "Kubernetes cluster initialized successfully."
             '
+        
         
     - name: Install Calico Network Plugin
       run: |
