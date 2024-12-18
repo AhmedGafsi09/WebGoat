@@ -11,3 +11,4 @@ spec:
       targetPort: 9093
       nodePort: 31093
   type: NodePort
+  
