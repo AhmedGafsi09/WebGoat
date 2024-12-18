@@ -1,108 +1,108 @@
-# name: Security and Quality Checks
+name: Security and Quality Checks
 
-# on:
-#   push:
-#     branches: [ main ]
-#   pull_request:
-#     branches: [ main ]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-# permissions:
-#   contents: read
-#   security-events: write
-#   actions: read
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
-# jobs:
-#   security:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-#       - name: Setup Java
-#         uses: actions/setup-java@v3
-#         with:
-#           distribution: 'temurin'
-#           java-version: '21'
-#           cache: 'maven'
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
 
-#       - name: Build for SonarQube
-#         run: mvn clean compile -DskipTests
+      - name: Build for SonarQube
+        run: mvn clean compile -DskipTests
 
-#       - name: SonarQube Scan
-#         uses: sonarsource/sonarqube-scan-action@master
-#         env:
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-#         with:
-#           args: >
-#             -Dsonar.projectKey=WebGoat
-#             -Dsonar.java.binaries=target/classes
-#             -Dsonar.sources=src/main/java/
-#             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=WebGoat
+            -Dsonar.java.binaries=target/classes
+            -Dsonar.sources=src/main/java/
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-#       - name: Run Trivy vulnerability scanner
-#         uses: aquasecurity/trivy-action@master
-#         continue-on-error: true
-#         with:
-#           scan-type: 'fs'
-#           scan-ref: '.'
-#           format: 'table'
-#           output: 'trivy-results.txt'
-#           severity: 'CRITICAL,HIGH'
-#           exit-code: '0'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          output: 'trivy-results.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
 
-#       # Installation et exécution manuelle de Dependency Check
-#       - name: Setup Dependency Check
-#         run: |
-#           VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt)
-#           wget "https://github.com/jeremylong/DependencyCheck/releases/download/v${VERSION}/dependency-check-${VERSION}-release.zip"
-#           unzip dependency-check-${VERSION}-release.zip
-#           chmod +x dependency-check/bin/dependency-check.sh
+      # Installation et exécution manuelle de Dependency Check
+      - name: Setup Dependency Check
+        run: |
+          VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt)
+          wget "https://github.com/jeremylong/DependencyCheck/releases/download/v${VERSION}/dependency-check-${VERSION}-release.zip"
+          unzip dependency-check-${VERSION}-release.zip
+          chmod +x dependency-check/bin/dependency-check.sh
 
-#       - name: Run Dependency Check
-#         env:
-#             NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-#         run: |
-#             ./dependency-check/bin/dependency-check.sh \
-#             --project "WebGoat" \
-#             --nvdApiKey $NVD_API_KEY \
-#             --scan "." \
-#             --format "HTML" \
-#             --out "reports" \
-#             --failOnCVSS 11 \
-#             --enableRetired
+      - name: Run Dependency Check
+        env:
+            NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+            ./dependency-check/bin/dependency-check.sh \
+            --project "WebGoat" \
+            --nvdApiKey $NVD_API_KEY \
+            --scan "." \
+            --format "HTML" \
+            --out "reports" \
+            --failOnCVSS 11 \
+            --enableRetired
 
-#       - name: Lint Kubernetes files
-#         run: |
-#           curl -Lo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
-#           tar xf kubeconform.tar.gz
-#           ls -al kubernetes/
-#           ./kubeconform -strict kubernetes/
+      - name: Lint Kubernetes files
+        run: |
+          curl -Lo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform.tar.gz
+          ls -al kubernetes/
+          ./kubeconform -strict kubernetes/
 
-#       - name: Run OWASP ZAP Full Scan
-#         uses: zaproxy/action-full-scan@v0.9.0
-#         continue-on-error: true
-#         with:
-#           target: 'http://20.151.79.23:31051/WebGoat'
-#           allow-issue-writing: false
-#           fail-action: false
-#           cmd_options: '-I'
-#           rules_file_name: '.zap/rules.tsv'
+      - name: Run OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.9.0
+        continue-on-error: true
+        with:
+          target: 'http://20.151.79.23:31051/WebGoat'
+          allow-issue-writing: false
+          fail-action: false
+          cmd_options: '-I'
+          rules_file_name: '.zap/rules.tsv'
     
-#       - name: Analyze ZAP Scan Results
-#         run: |
-#             if grep -q "FAIL-NEW" zap-scan.out; then
-#               echo "Security vulnerabilities detected!"
-#               exit 1
-#             fi
+      - name: Analyze ZAP Scan Results
+        run: |
+            if grep -q "FAIL-NEW" zap-scan.out; then
+              echo "Security vulnerabilities detected!"
+              exit 1
+            fi
 
-#       - name: Upload Security Reports
-#         if: always()
-#         uses: actions/upload-artifact@v3
-#         with:
-#           name: security-reports
-#           path: |
-#             reports/
-#             ./*zap*
-#             trivy-results.txt
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            reports/
+            ./*zap*
+            trivy-results.txt
