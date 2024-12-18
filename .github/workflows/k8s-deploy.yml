@@ -26,7 +26,7 @@ jobs:
             pwd
             ls -al
             git pull
-
+     
             echo "Creating namespaces..."
             kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
             kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
