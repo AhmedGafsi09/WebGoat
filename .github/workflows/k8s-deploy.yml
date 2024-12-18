@@ -22,7 +22,6 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa azureuser@20.63.21.191 '
             echo "Setting up environment..."
-            mkdir /WebGoat
             cd ~/WebGoat
             pwd
             ls -al
