@@ -16,11 +16,11 @@
 #           mkdir -p ~/.ssh
 #           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
 #           chmod 600 ~/.ssh/id_rsa
-#           ssh-keyscan -H 20.63.21.191 >> ~/.ssh/known_hosts
+#           ssh-keyscan -H 20.151.79.23 >> ~/.ssh/known_hosts
 
 #       - name: Deploy Monitoring Stack
 #         run: |
-#           ssh -i ~/.ssh/id_rsa azureuser@20.63.21.191 '
+#           ssh -i ~/.ssh/id_rsa azureuser@20.151.79.23 '
 #             echo "Setting up environment..."
 #             cd ~/WebGoat
 #             pwd
@@ -64,11 +64,11 @@
 #             kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
 
 #             echo "Deployment complete. Access URLs:"
-#             echo "WebGoat: http://20.63.21.191:31051/WebGoat"
-#             echo "Prometheus: http://20.63.21.191:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
-#             echo "Grafana: http://20.63.21.191:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
-#             echo "kube-state-metrics: http://20.63.21.191:31080/"
-#             echo "SonarQube: http://20.63.21.191:9000/"
+#             echo "WebGoat: http://20.151.79.23:31051/WebGoat"
+#             echo "Prometheus: http://20.151.79.23:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
+#             echo "Grafana: http://220.151.79.23:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
+#             echo "kube-state-metrics: http://20.151.79.23:31080/"
+#             echo "SonarQube: http://20.151.79.23:9000/"
 
 
 #             echo "\nService Status:"

@@ -14,11 +14,11 @@ data:
         metrics_path: '/WebGoat/actuator/prometheus'
         static_configs:
           - targets:
-              - '20.63.21.191:31051'
+              - '20.151.79.23:31051'
 
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['20.63.21.191:31090']
+          - targets: ['20.151.79.23:31090']
 
       - job_name: 'kubernetes'
         scheme: https
@@ -42,12 +42,12 @@ data:
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets:
-              - '20.63.21.191:31080'
+              - '20.151.79.23:31080'
 
       - job_name: 'grafana'
         static_configs:
           - targets:
-              - '20.63.21.191:31300'
+              - '20.151.79.23:31300'
 
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
