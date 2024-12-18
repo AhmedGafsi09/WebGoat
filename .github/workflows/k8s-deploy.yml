@@ -1,76 +1,76 @@
-# name: Deploy to Kubernetes
+name: Deploy to Kubernetes
 
-# on:
-#   push:
-#     branches: [ main ]
-#   workflow_dispatch:
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v3
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-#       - name: Set up SSH
-#         run: |
-#           mkdir -p ~/.ssh
-#           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-#           chmod 600 ~/.ssh/id_rsa
-#           ssh-keyscan -H 20.63.16.243 >> ~/.ssh/known_hosts
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 20.63.21.191 >> ~/.ssh/known_hosts
 
-#       - name: Deploy Monitoring Stack
-#         run: |
-#           ssh -i ~/.ssh/id_rsa azureuser@20.63.16.243 '
-#             echo "Setting up environment..."
-#             cd ~/WebGoat
-#             pwd
-#             ls -al
-#             git pull
+      - name: Deploy Monitoring Stack
+        run: |
+          ssh -i ~/.ssh/id_rsa azureuser@20.63.21.191 '
+            echo "Setting up environment..."
+            cd ~/WebGoat
+            pwd
+            ls -al
+            git pull
 
-#             echo "Creating namespaces..."
-#             kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-#             kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
+            echo "Creating namespaces..."
+            kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create namespace webgoat --dry-run=client -o yaml | kubectl apply -f -
 
-#             echo "Deploying Prometheus..."
-#             kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
-#             kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
-#             kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
-#             kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
-#             kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
-#             kubectl apply -f kubernetes/quotas.yaml
+            echo "Deploying Prometheus..."
+            kubectl apply -f kubernetes/prometheus/prometheus-config.yaml
+            kubectl apply -f kubernetes/prometheus/kube-state-metrics.yaml
+            kubectl apply -f kubernetes/prometheus/prometheus-deployment.yaml
+            kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
+            kubectl apply -f kubernetes/alertmanager/alertmanager-deployment.yaml
+            kubectl apply -f kubernetes/quotas.yaml
 
             
-#             echo "Deploying Grafana..."
-#             kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
+            echo "Deploying Grafana..."
+            kubectl apply -f kubernetes/grafana/grafana-deployment.yaml
             
-#             echo "Waiting for monitoring stack..."
-#             kubectl -n monitoring wait --for=condition=ready pod -l app=prometheus --timeout=300s
-#             kubectl -n monitoring wait --for=condition=ready pod -l app=grafana --timeout=300s
+            echo "Waiting for monitoring stack..."
+            kubectl -n monitoring wait --for=condition=ready pod -l app=prometheus --timeout=300s
+            kubectl -n monitoring wait --for=condition=ready pod -l app=grafana --timeout=300s
             
-#             echo "Cleaning up old WebGoat deployment..."
-#             kubectl delete -f kubernetes/deployment.yaml --ignore-not-found
-#             kubectl delete -f kubernetes/service.yaml --ignore-not-found
+            echo "Cleaning up old WebGoat deployment..."
+            kubectl delete -f kubernetes/deployment.yaml --ignore-not-found
+            kubectl delete -f kubernetes/service.yaml --ignore-not-found
 
-#             # Supprimer les ressources existantes
-#             kubectl delete deployment -n webgoat webgoat
-#             kubectl delete service -n webgoat webgoat
-#             sleep 10 
+            # Supprimer les ressources existantes
+            kubectl delete deployment -n webgoat webgoat
+            kubectl delete service -n webgoat webgoat
+            sleep 10 
 
-#             echo "Deploying WebGoat..."
-#             kubectl apply -f kubernetes/deployment.yaml
-#             kubectl apply -f kubernetes/service.yaml
+            echo "Deploying WebGoat..."
+            kubectl apply -f kubernetes/deployment.yaml
+            kubectl apply -f kubernetes/service.yaml
             
-#             echo "Waiting for WebGoat..."
-#             kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
+            echo "Waiting for WebGoat..."
+            kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
 
-#             echo "Deployment complete. Access URLs:"
-#             echo "WebGoat: http://20.63.16.243:31051/WebGoat"
-#             echo "Prometheus: http://20.63.16.243:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
-#             echo "Grafana: http://20.63.16.243:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
-#             echo "kube-state-metrics: http://20.63.16.243:31080/"
-#             echo "SonarQube: http://20.63.16.243:9000/"
+            echo "Deployment complete. Access URLs:"
+            echo "WebGoat: http://20.63.21.191:31051/WebGoat"
+            echo "Prometheus: http://20.63.21.191:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
+            echo "Grafana: http://220.63.21.19:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
+            echo "kube-state-metrics: http://20.63.21.191:31080/"
+            echo "SonarQube: http://20.63.21.191:9000/"
 
 
-#             echo "\nService Status:"
-#             kubectl get pods,svc --all-namespaces | grep -E "NAME|monitoring|webgoat"
-#           '
+            echo "\nService Status:"
+            kubectl get pods,svc --all-namespaces | grep -E "NAME|monitoring|webgoat"
+          '
