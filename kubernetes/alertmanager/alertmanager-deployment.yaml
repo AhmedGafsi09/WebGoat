@@ -25,23 +25,23 @@ spec:
           name: alertmanager
         resources:
           requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 200m
+            cpu: 250m
             memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1GiMi
         readinessProbe:
           httpGet:
             path: /-/ready
             port: 9093
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
+          initialDelaySeconds: 60
+          timeoutSeconds: 45
         livenessProbe:
           httpGet:
             path: /-/healthy
             port: 9093
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
+          initialDelaySeconds: 60
+          timeoutSeconds: 45
         volumeMounts:
         - name: config-volume
           mountPath: /etc/alertmanager

@@ -110,6 +110,11 @@ jobs:
           kubectl apply -f kubernetes/quotas.yaml || true
           sleep 10
 
+      - name: Debug AlertManager DeploymenT
+        run: |
+          kubectl describe pod -l app=alertmanager -n monitoring
+          kubectl logs -l app=alertmanager -n monitoring
+
       # 9. Vérification de l'état des pods avec timeout
       - name: Wait for Pods Readiness
         run: |
@@ -118,7 +123,7 @@ jobs:
               sleep 5
               echo "Waiting for Prometheus pods..."
             done
-            until kubectl wait --for=condition=ready pod -l app=alertmanager -n monitoring --timeout=30s; do
+            until kubectl wait --for=condition=ready pod -l app=alertmanager -n monitoring --timeout=180s; do
               sleep 5
               echo "Waiting for AlertManager pods..."
             done
