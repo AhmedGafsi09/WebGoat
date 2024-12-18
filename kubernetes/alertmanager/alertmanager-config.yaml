@@ -9,7 +9,7 @@ data:
       resolve_timeout: 5m
 
     route:
-      group_by: ['alertname', 'severity']  # Ajout de severity pour le groupement
+      group_by: ['alertname', 'severity']
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 1h
@@ -18,7 +18,6 @@ data:
       - match:
           severity: critical
         receiver: 'discord'
-        group_wait: 0s  # Envoi immédiat pour les alertes critiques
       - match:
           severity: warning
         receiver: 'discord'
@@ -27,11 +26,30 @@ data:
     - name: 'discord'
       webhook_configs:
       - url: 'https://discord.com/api/webhooks/1310078253767200788/eQM3uF7CWp0On2wrQqDYZAxYoNkYDdppCBU9BibbIL2ZkM-S67MJb9oDNglMOwqss-P0'
-        send_resolved: true # Envoi des résolutions d'alertes
-        message: |
-          {{ if eq .Status "firing" }}🔥 ALERTE {{ else }}✅ RESOLVED{{ end }}
-          Alerte: {{ .GroupLabels.alertname }}
-          Sévérité: {{ .GroupLabels.severity }}
-          {{ range .Alerts }}
-          Description: {{ .Annotations.description }}
-          {{ end }}
+        send_resolved: true
+        title: '{{ template "discord.default.title" . }}'
+        text: '{{ template "discord.default.text" . }}'
+
+    templates:
+    - '/etc/alertmanager/discord.tmpl'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-templates
+  namespace: monitoring
+data:
+  discord.tmpl: |
+    {{ define "discord.default.title" }}
+    [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+    {{ end }}
+
+    {{ define "discord.default.text" }}
+    {{ range .Alerts }}
+    **Alert:** {{ .Labels.alertname }}
+    **Severity:** {{ .Labels.severity }}
+    **Description:** {{ .Annotations.description }}
+    {{ if .Annotations.summary }}**Summary:** {{ .Annotations.summary }}{{ end }}
+    {{ end }}
+    {{ end }}

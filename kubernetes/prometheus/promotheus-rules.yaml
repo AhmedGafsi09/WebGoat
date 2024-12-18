@@ -36,3 +36,21 @@ data:
         annotations:
           summary: "Pod {{ $labels.pod }} is crash looping"
           description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted more than 5 times in 10 minutes"
+
+      - alert: NodeHighMemory
+        expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ $labels.instance }} memory usage is critically high"
+          description: "Memory usage on {{ $labels.instance }} has exceeded 90% for 5 minutes."
+
+      - alert: PersistentVolumeUsage
+        expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Persistent volume usage is high"
+          description: "Persistent volume usage is above 85% for {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }}"
