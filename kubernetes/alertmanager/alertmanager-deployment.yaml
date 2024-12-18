@@ -19,9 +19,29 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: alertmanager
-        image: prom/alertmanager
+        image: prom/alertmanager:latest
         ports:
         - containerPort: 9093
+          name: alertmanager
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9093
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9093
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
         volumeMounts:
         - name: config-volume
           mountPath: /etc/alertmanager

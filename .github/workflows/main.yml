@@ -94,28 +94,43 @@ jobs:
 
       - name: Deploy WebGoat
         run: |
-          echo "Deploying WebGoat..."
-          kubectl apply -f kubernetes/deployment.yaml || true
+          echo "Deploying Prometheus..."
+          kubectl apply -f kubernetes/prometheus/ || true
+          sleep 15
+          
+          echo "Deploying AlertManager..."
+          kubectl apply -f kubernetes/alertmanager/ || true
+          sleep 15
+          
+          echo "Deploying Grafana..."
+          kubectl apply -f kubernetes/grafana/ || true
+          sleep 15
+          
+          echo "Deploying resource quotas..."
+          kubectl apply -f kubernetes/quotas.yaml || true
           sleep 10
-          kubectl apply -f kubernetes/service.yaml || true
 
       # 9. Vérification de l'état des pods avec timeout
       - name: Wait for Pods Readiness
         run: |
-          timeout 300s bash -c '
-          until kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=30s; do
-            sleep 5
-            echo "Waiting for Prometheus pods..."
-          done
-          until kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=30s; do
-            sleep 5
-            echo "Waiting for Grafana pods..."
-          done
-          until kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=30s; do
-            sleep 5
-            echo "Waiting for WebGoat pods..."
-          done
-          '
+           timeout 300s bash -c '
+            until kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=30s; do
+              sleep 5
+              echo "Waiting for Prometheus pods..."
+            done
+            until kubectl wait --for=condition=ready pod -l app=alertmanager -n monitoring --timeout=30s; do
+              sleep 5
+              echo "Waiting for AlertManager pods..."
+            done
+            until kubectl wait --for=condition=ready pod -l app=grafana -n monitoring --timeout=30s; do
+              sleep 5
+              echo "Waiting for Grafana pods..."
+            done
+            until kubectl wait --for=condition=ready pod -l app=webgoat -n webgoat --timeout=30s; do
+              sleep 5
+              echo "Waiting for WebGoat pods..."
+            done
+            '
 
       # 10. Affichage des URLs et vérification finale
       - name: Verify Deployment and Show Access URLs
@@ -128,4 +143,5 @@ jobs:
           echo "WebGoat: http://20.151.79.23:31051/WebGoat"
           echo "Prometheus: http://20.151.79.23:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
           echo "Grafana: http://20.151.79.23:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
+          echo "AlertManager: http://20.151.79.23:31093"
           echo "kube-state-metrics: http://20.151.79.23:31080/"
