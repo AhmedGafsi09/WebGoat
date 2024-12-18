@@ -150,3 +150,4 @@ jobs:
           echo "Grafana: http://20.151.79.23:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
           echo "AlertManager: http://20.151.79.23:31093"
           echo "kube-state-metrics: http://20.151.79.23:31080/"
+          
