@@ -29,23 +29,32 @@ spec:
             memory: 512Mi
           limits:
             cpu: 500m
-            memory: 1GiMi
+            memory: 1Gi
         readinessProbe:
           httpGet:
             path: /-/ready
             port: 9093
           initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 5
           timeoutSeconds: 45
         livenessProbe:
           httpGet:
             path: /-/healthy
             port: 9093
           initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 5
           timeoutSeconds: 45
         volumeMounts:
         - name: config-volume
           mountPath: /etc/alertmanager
+        - name: templates-volume
+          mountPath: /etc/alertmanager/templates
       volumes:
       - name: config-volume
         configMap:
           name: alertmanager-config
+      - name: templates-volume
+        configMap:
+          name: alertmanager-templates

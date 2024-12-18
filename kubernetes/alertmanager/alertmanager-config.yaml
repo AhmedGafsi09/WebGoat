@@ -27,11 +27,6 @@ data:
       webhook_configs:
       - url: 'https://discord.com/api/webhooks/1310078253767200788/eQM3uF7CWp0On2wrQqDYZAxYoNkYDdppCBU9BibbIL2ZkM-S67MJb9oDNglMOwqss-P0'
         send_resolved: true
-        title: '{{ template "discord.default.title" . }}'
-        text: '{{ template "discord.default.text" . }}'
-
-    templates:
-    - '/etc/alertmanager/discord.tmpl'
 
 ---
 apiVersion: v1
@@ -45,7 +40,7 @@ data:
     [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
     {{ end }}
 
-    {{ define "discord.default.text" }}
+    {{ define "discord.default.message" }}
     {{ range .Alerts }}
     **Alert:** {{ .Labels.alertname }}
     **Severity:** {{ .Labels.severity }}
