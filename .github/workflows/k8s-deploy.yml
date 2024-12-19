@@ -64,7 +64,7 @@
 #             kubectl -n webgoat wait --for=condition=ready pod -l app=webgoat --timeout=300s
 
 #             echo "Deployment complete. Access URLs:"
-#             echo "WebGoat: http://20.151.79.23:31051/WebGoat"
+#             echo "WebGoat: http://20.151.79.23:31051/WebGoat/login"
 #             echo "Prometheus: http://20.151.79.23:$(kubectl get svc -n monitoring prometheus -o jsonpath="{.spec.ports[0].nodePort}")"
 #             echo "Grafana: http://220.151.79.23:$(kubectl get svc -n monitoring grafana -o jsonpath="{.spec.ports[0].nodePort}")"
 #             echo "kube-state-metrics: http://20.151.79.23:31080/"

@@ -5,17 +5,19 @@ metadata:
   namespace: webgoat
 data:
   application.yml: |
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health,metrics,prometheus
-          base-path: /WebGoat/actuator
-      endpoint:
-        prometheus:
-          enabled: true
-        metrics:
-          enabled: true
-    micrometer:
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health, metrics, prometheus
+        base-path: /WebGoat/actuator
+    endpoint:
       prometheus:
         enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+  micrometer:
+    prometheus:
+      enabled: true
