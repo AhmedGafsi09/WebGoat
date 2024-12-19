@@ -66,7 +66,8 @@ public class WebSecurityConfig {
                         "/plugins/**",
                         "/registration",
                         "/register.mvc",
-                        "/actuator/**")
+                        "/actuator/**",
+                        "/actuator/prometheus")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
