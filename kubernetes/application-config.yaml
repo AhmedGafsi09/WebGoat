@@ -10,6 +10,12 @@ data:
         web:
           exposure:
             include: health,metrics,prometheus
+          base-path: /WebGoat/actuator
       endpoint:
         prometheus:
           enabled: true
+        metrics:
+          enabled: true
+    micrometer:
+      prometheus:
+        enabled: true
