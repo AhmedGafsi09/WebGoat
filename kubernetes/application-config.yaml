@@ -10,6 +10,11 @@ data:
         web:
           exposure:
             include: health,metrics,prometheus
+          base-path: /WebGoat/actuator  
       endpoint:
         prometheus:
           enabled: true
+    security:
+      basic:
+        enabled: false
+    management.security.enabled: false

@@ -25,6 +25,11 @@ spec:
           value: "8080"
         - name: WEBGOAT_HOST
           value: "0.0.0.0"
+        # Add Spring Security configuration
+        - name: MANAGEMENT_SECURITY_ENABLED
+          value: "false"
+        - name: SECURITY_BASIC_ENABLED
+          value: "false"
         ports:
         - containerPort: 8080
         resources:
@@ -34,3 +39,13 @@ spec:
           limits:
             cpu: "200m"
             memory: "512Mi"
+        # Add volume mount
+        volumeMounts:
+        - name: config-volume
+          mountPath: /application.yml
+          subPath: application.yml
+      # Add volumes
+      volumes:
+      - name: config-volume
+        configMap:
+          name: webgoat-config
