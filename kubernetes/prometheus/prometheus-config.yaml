@@ -27,9 +27,9 @@ data:
         metrics_path: '/WebGoat/actuator/prometheus'
         scheme: 'http'
         basic_auth:
-          username: 'webgoat'        # Default WebGoat username
-          password: 'webgoat'        # Default WebGoat password
-        follow_redirects: true       # Handle 302 redirects
+          username: 'webgoat'        
+          password: 'webgoat'       
+        follow_redirects: true       
         tls_config:
           insecure_skip_verify: true
         static_configs:

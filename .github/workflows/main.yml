@@ -97,8 +97,9 @@ jobs:
           echo "Deploying WebGoat..."
           kubectl apply -f kubernetes/deployment.yaml || true
           kubectl apply -f kubernetes/service.yaml || true
+          kubectl apply -f kubernetes/application-config.yaml || true
           sleep 15
-
+          
           echo "Deploying Prometheus..."
           kubectl apply -f kubernetes/prometheus/ || true
           sleep 15
