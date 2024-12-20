@@ -407,7 +407,7 @@
 
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
-      <version>1.13.0</version>
+      <version>1.12.6</version>
       <exclusions>
         <exclusion>
           <groupId>io.micrometer</groupId>
