@@ -54,5 +54,8 @@ jobs:
           architecture: x64
           cache: 'maven'
 
+      - name: Spotless apply
+        run: mvn --no-transfer-progress spotless:apply
+
       - name: Build with Maven
         run: mvn --no-transfer-progress verify
