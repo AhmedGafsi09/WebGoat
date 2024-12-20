@@ -96,6 +96,16 @@ jobs:
               echo "Security vulnerabilities detected!"
               exit 1
             fi
+            if [ -f zap-scan.json ]; then
+              echo "Analyzing ZAP scan results..."
+              if jq -e '.site[].alerts[] | select(.risk=="High")' zap-scan.json > /dev/null; then
+                echo "High risk vulnerabilities detected!"
+                exit 1
+              fi
+            else
+              echo "ZAP scan results file not found"
+              exit 1
+            fi
 
       - name: Upload Security Reports
         if: always()
@@ -105,4 +115,5 @@ jobs:
           path: |
             reports/
             ./*zap*
+            zap-scan.json
             trivy-results.txt
