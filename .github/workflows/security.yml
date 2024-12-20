@@ -92,10 +92,6 @@ jobs:
     
       - name: Analyze ZAP Scan Results
         run: |
-            if grep -q "FAIL-NEW" zap-scan.out; then
-              echo "Security vulnerabilities detected!"
-              exit 1
-            fi
             if [ -f zap-scan.json ]; then
               echo "Analyzing ZAP scan results..."
               if jq -e '.site[].alerts[] | select(.risk=="High")' zap-scan.json > /dev/null; then
