@@ -87,7 +87,7 @@ jobs:
         uses: zaproxy/action-full-scan@v0.9.0
         continue-on-error: true
         with:
-          target: 'http://20.151.79.23:31051/WebGoat'
+          target: 'http://20.151.79.23:31051/WebGoat/login'
           allow-issue-writing: false
           fail-action: false
           cmd_options: '-I -J zap-scan.json'
