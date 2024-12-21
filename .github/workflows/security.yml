@@ -90,10 +90,8 @@ jobs:
           target: 'http://20.151.79.23:31051/WebGoat'
           allow-issue-writing: false
           fail-action: false
-          cmd_options: '-I'
+          cmd_options: '-I -J zap-scan.json'
           rules_file_name: '.zap/rules.tsv'
-          format: 'json'
-          output-file: 'zap-scan.json'
       
       - name: Analyze ZAP Scan Results
         run: |
