@@ -80,17 +80,17 @@ jobs:
           ls -al kubernetes/
           ./kubeconform -strict kubernetes/
 
-          - name: Run OWASP ZAP Full Scan
-          uses: zaproxy/action-full-scan@v0.9.0
-          continue-on-error: true
-          with:
-            target: 'http://20.151.79.23:31051/WebGoat'
-            allow-issue-writing: false
-            fail-action: false
-            cmd_options: '-I'
-            rules_file_name: '.zap/rules.tsv'
-            format: 'json'
-            output-file: 'zap-scan.json'
+      - name: Run OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.9.0
+        continue-on-error: true
+        with:
+          target: 'http://20.151.79.23:31051/WebGoat'
+          allow-issue-writing: false
+          fail-action: false
+          cmd_options: '-I'
+          rules_file_name: '.zap/rules.tsv'
+          format: 'json'
+          output-file: 'zap-scan.json'
       
       - name: Analyze ZAP Scan Results
         run: |
