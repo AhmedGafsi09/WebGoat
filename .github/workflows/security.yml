@@ -80,6 +80,9 @@ jobs:
           ls -al kubernetes/
           ./kubeconform -strict kubernetes/
 
+      - name: Create ZAP scan file
+        run: touch zap-scan.json
+
       - name: Run OWASP ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.9.0
         continue-on-error: true
@@ -91,9 +94,6 @@ jobs:
           rules_file_name: '.zap/rules.tsv'
           format: 'json'
           output-file: 'zap-scan.json'
-
-      - name: Create ZAP scan file
-        run: touch zap-scan.json
       
       - name: Analyze ZAP Scan Results
         run: |
