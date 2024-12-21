@@ -80,28 +80,31 @@ jobs:
           ls -al kubernetes/
           ./kubeconform -strict kubernetes/
 
-      - name: Run OWASP ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.9.0
-        continue-on-error: true
-        with:
-          target: 'http://20.151.79.23:31051/WebGoat'
-          allow-issue-writing: false
-          fail-action: false
-          cmd_options: '-I -J zap-scan.json'
-          rules_file_name: '.zap/rules.tsv'
-    
+          - name: Run OWASP ZAP Full Scan
+          uses: zaproxy/action-full-scan@v0.9.0
+          continue-on-error: true
+          with:
+            target: 'http://20.151.79.23:31051/WebGoat'
+            allow-issue-writing: false
+            fail-action: false
+            cmd_options: '-I'
+            rules_file_name: '.zap/rules.tsv'
+            format: 'json'
+            output-file: 'zap-scan.json'
+      
       - name: Analyze ZAP Scan Results
         run: |
-            if [ -f zap-scan.json ]; then
-              echo "Analyzing ZAP scan results..."
-              if jq -e '.site[].alerts[] | select(.risk=="High")' zap-scan.json > /dev/null; then
-                echo "High risk vulnerabilities detected!"
-                exit 1
-              fi
-            else
-              echo "ZAP scan results file not found"
+          if [ -f zap-scan.json ]; then
+            echo "Analyzing ZAP scan results..."
+            if jq -e '.site[].alerts[] | select(.risk=="High")' zap-scan.json > /dev/null; then
+              echo "High risk vulnerabilities detected!"
               exit 1
             fi
+          else
+            echo "ZAP scan results file not found"
+            ls -la
+            exit 1
+          fi
 
       - name: Upload Security Reports
         if: always()
