@@ -14,7 +14,7 @@ jobs:
 
     steps:
       # 1. Récupération du code
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # 2. Configuration du KUBECONFIG depuis un secret
       - name: Set KUBECONFIG
